@@ -8,7 +8,7 @@
 #     ${Some Name external@some.com} => external@some.com
 
 import argparse
-import numpy as np
+import datetime
 import subprocess
 import sys
 import ldap
@@ -17,6 +17,29 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import getpass
 
+# define common mail lists
+list_users = [["fachschaft", "Liebe Fachschaft"]]
+list_users.append(["flachschaft", "Liebe Fachschaft"])
+list_users.append(["bernd", "Liebe Fachschaft"])
+list_users.append(["fsinformatik", "Liebe Fachschaft"])
+list_users.append(["fsphysik", "Liebe Fachschaft"])
+list_users.append(["fsmathematik", "Liebe Fachschaft"])
+list_users.append(["fsmathinf", "Liebe Fachschaft"])
+list_users.append(["infostudkom", "Liebes Mitglied der Studienkommission Informatik"])
+list_users.append(["tistudkom", "Liebes Mitglied der Studkom TI"])
+list_users.append(["mathstudkom", "Liebe MathStudKomLerInnen"])
+list_users.append(["mathestudkom", "Liebe MathStudKomLerInnen"])
+list_users.append(["physstudkom", "Liebe Mitglied der Studkom Physik"])
+list_users.append(["physikstudkom", "Liebe Mitglied der Studkom Physik"])
+list_users.append(["studkomphysik", "Liebe Mitglied der Studkom Physik"])
+list_users.append(["scstudkom", "Liebe Mitglied der Studkom SciCom"])
+list_users.append(["mathfakrat", "Liebes Mitglied des MatheInfo-Fakrats"])
+list_users.append(["fakratmathinf", "Liebes Mitglied des MatheInfo-Fakrats"])
+list_users.append(["physfakrat", "Liebes Mitglied des Physik-Fakrats"])
+list_users.append(["fakratphys", "Liebes Mitglied des Physik-Fakrats"])
+list_users.append(["fakratphysik", "Liebes Mitglied des Physik-Fakrats"])
+list_users.append(["akfest", "Liebes Mitglied der AK-Fest Liste"])
+
 def check_path(path: str) -> bool:
     """checks the input file name for a valid date and type .txt"""
     year = path[0:4].isnumeric()
@@ -24,10 +47,10 @@ def check_path(path: str) -> bool:
     date = path[8:9].isnumeric()
     name = year and month and date and path[4] is '-' and path[7] is '-'
 
-    if '.txt' in path and name:
+    if path.endswith('.txt'):
         return True
     else:
-        raise Exception('Der Dateipfad führt nicht zu einem Sitzungsprotokoll!')
+        raise Exception('Der Dateipfad führt nicht zu einem Sitzungsprotokoll oder du schaust besser nochmal über den Filenamen!')
         return False
 
 class Protocol(object):
@@ -56,7 +79,7 @@ class Protocol(object):
         """Adjust TOP title type setting"""
         for top in self.tops:
             if not self.protocol[top.start+1].startswith("TOP: "): self.protocol[top.start+1] = "TOP " + str(top.number) + ": " + self.protocol[top.start+1]
-            else: self.protocol[top.start+1] = "TOP " + top.number + ": " + self.protocol[top.start+1,5:]
+            else: self.protocol[top.start+1] = self.protocol[top.start+1][:3] + str(top.number) + " " + self.protocol[top.start+1][3:]
             length = len(self.protocol[top.start+1])
             self.protocol[top.start+2] = "="*length
             self.protocol[top.start] = "="*length
@@ -69,37 +92,45 @@ class Protocol(object):
     def send_mails(self):
         try:
             server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
-            login = input('URZ ID für den Mailversand: ')
-            server.login(login, getpass.getpass(prompt='Passwort für deinen Mail-Account: '))
-            fromaddr = getpass.getuser()
+            login = input('Uni ID für den Mailversand: ')
+            server.login(login, getpass.getpass(prompt='Passwort für deinen Uni Account: '))   
+
             for top in self.tops:
                 top.send_mail(server, self.protocol)
             server.quit()
             self.mails = True
-            print("Alle Mails wurden erfolgreich verschickt. \n")
-        except:
-            print("Mails konnten nicht verschickt werden. Hast du die richtigen Anmeldedaten eingegeben?")
+            print("\nAlle Mails wurden erfolgreich verschickt. \n")
+        except Exception as e:
+            print(e)
+            print("\nMails konnten nicht verschickt werden. Hast du die richtigen Anmeldedaten eingegeben?")
             pass
 
     def write_success(self):
         if self.mails:
-            self.protocol.insert(0, ":Protocoldude: Mails versandt @ 16:39:57 Uhr, 19.01.2018")
+            now = datetime.datetime.now()
+            self.protocol.insert(0, ":Protocoldude: Mails versandt @ {}".format(now.strftime("%H:%M %d.%m.%Y")))
             self.protocol.insert(1, "\n")
 
         with open(self.path, 'w') as file:
             file.write('\n'.join(self.protocol) + '\n')
-        subprocess.call(['svn add', '{}'.format(self.path)])
-        subprocess.call(['svn commit', '-m', '"Protokoll der gemeinsamen Sitzung hinzugefügt"')
-        print("Protokoll bearbeitet und in den Sumpf geschrieben.")
+        try:
+            subprocess.run(['svn', 'up'], check=True)
+            subprocess.run(['svn', 'add', '{}'.format(self.path)], check=True)
+            subprocess.run(['svn', 'commit', '-m', '"Protokoll der gemeinsamen Sitzung hinzugefügt"'], check=True)
+            print("Protokoll bearbeitet und in den Sumpf geschrieben.\n Für heute hast du's geschafft!")
+        except: 
+            print("Konnte SVN Update nicht durchführen. \n Das musst Du irgendwie von Hand reparieren mit 'svn cleanup' oder so.")
+            print("Das Protokoll wurde trotzdem bearbeitet und gespeichert.")
+            pass
 
 
-class TOP(Protocol): # inherit from "object"
+class TOP(Protocol):
     """Separates the several TOPs out of one protocol and provides different functions to further process the sections"""
 
     def __init__(self, number: int, start: int, end: int):
         self.number = number
         self.start = start
-        self.end = end # only at first because of of missing information
+        self.end = end
         self.users = []
         self.mails = []
 
@@ -117,36 +148,33 @@ class TOP(Protocol): # inherit from "object"
         self.users = list(set(self.users)) # remove duplicates
 
     def get_mails(self):
-        # print(self.users)
-        # print(extract_mails(ldap_search(self.users)))
-        # print(list_mails(self.users))
         if extract_mails(ldap_search(self.users)) is not None:
             self.mails = extract_mails(ldap_search(self.users))
-            if list_mails(self.users):
-                self.mails.append(list_mails(self.users))
 
-        if list_mails(self.users):
-            self.mails = list_mails(self.users)
+        for user in self.users:
+            if user in list_users[:][0]:
+                self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
 
-        # for user in users[0]:
-        #     for mail in mails:
-        #     if (user in mail.split('@'))
     def send_mail(self, server, protocol):
         for user,mail in zip(self.users,self.mails):
-            fromaddr = user
+            fromaddr = "fachschaft@mathphys.stura.uni-heidelberg.de"
 
             msg = MIMEMultipart()
             msg['From'] = fromaddr
             msg['To'] = mail
             msg['Subject'] = "Gemeinsame Sitzung: {}".format(protocol[self.start+1])
 
-            body = "Hallo {},\n\nDu sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(user, '\n'.join(protocol[self.start:self.end])+'\n')
+            if user in list_users[:][0]:
+                body = list_users[list_users[:][0].index(user)][1] + ",\n\n"
+            else:
+                body = "Hallo {},\n\n".format(user)
+            body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format('\n'.join(protocol[self.start:self.end])+'\n')
             # \n\nSollte der Text abgeschnitten sein, schaue bitte im Sitzungsprotokoll nach (Zeile #{tops[i]} – MathPhys Login notwendig).\n#{url}/#{file}\" | mail -a \"Reply-To: #{$replyto}\" -a \"Content-Type: text/plain; charset=UTF-8\" -s \"#{$subject}: #{title} (#{date})\" '#{mail}';", false) unless $debug
-            # body = '\n'.join(body) + '\n'
+
             msg.attach(MIMEText(body, 'plain'))
 
             text = msg.as_string()
-            server.sendmail(fromaddr, toaddr, text)
+            server.sendmail(fromaddr, mail, text)
 
 def ldap_search(users: list) -> list:
     """ searches for a list of users in our ldap """
@@ -170,85 +198,27 @@ def extract_mails(query: list) -> list:
             mails.append(attributes["mail"][0].decode('utf-8'))
         return mails
 
-def list_mails(names: list) -> list:
-    # define common mail lists
-    users = np.array(["fachschaft", "liebe Fachschaft"])
-    users = np.vstack([users, ["flachschaft", "liebe Fachschaft"]])
-    users = np.vstack([users, ["bernd", "liebe Fachschaft"]])
-    users = np.vstack([users, ["fsinformatik", "liebe Fachschaft"]])
-    users = np.vstack([users, ["fsphysik", "liebe Fachschaft"]])
-    users = np.vstack([users, ["fsmathematik", "liebe Fachschaft"]])
-    users = np.vstack([users, ["fsmathinf", "liebe Fachschaft"]])
-    users = np.vstack([users, ["infostudkom", "liebes Mitglied der Studienkommission Informatik"]])
-    users = np.vstack([users, ["tistudkom", "liebes Mitglied der Studkom TI"]])
-    users = np.vstack([users, ["mathstudkom", "liebe MathStudKomLerInnen"]])
-    users = np.vstack([users, ["mathestudkom", "liebe MathStudKomLerInnen"]])
-    users = np.vstack([users, ["physstudkom", "liebe Mitglied der Studkom Physik"]])
-    users = np.vstack([users, ["physikstudkom", "liebe Mitglied der Studkom Physik"]])
-    users = np.vstack([users, ["studkomphysik", "liebe Mitglied der Studkom Physik"]])
-    users = np.vstack([users, ["scstudkom", "liebe Mitglied der Studkom SciCom"]])
-    users = np.vstack([users, ["mathfakrat", "liebes Mitglied des MatheInfo-Fakrats"]])
-    users = np.vstack([users, ["fakratmathinf", "liebes Mitglied des MatheInfo-Fakrats"]])
-    users = np.vstack([users, ["physfakrat", "liebes Mitglied des Physik-Fakrats"]])
-    users = np.vstack([users, ["fakratphys", "liebes Mitglied des Physik-Fakrats"]])
-    users = np.vstack([users, ["fakratphysik", "liebes Mitglied des Physik-Fakrats"]])
-    users = np.vstack([users, ["akfest", "liebes Mitglied der AK-Fest Liste"]])
-
-    mails = []
-    for name in names:
-        if name in users[:,0]:
-            mails.append(name + "@mathphys.stura.uni-heidelberg.de")
-    return mails
-
-## check system 'Fachschaftsserver'
-#output = subprocess.check_output(["uname", "-n"]).decode("utf-8")
-#
-#if ('fsmath' not in output):
-#    raise Exception("Im Moment funktioniert das Skript nur auf dem Fachschaftsserver. Versuch es da nochmal.")
-
-#def check_user(user):
-#    output = subprocess.check_output(["ls", "-1", "/home"]).decode("utf-8")
-#    while (user not in output and user not in users[:,0]):
-#        print('Benutzername nicht gefunden.')
-#        if (input('Soll die Mail an wen anderes verschickt werden? [y/n]') is 'y'):
-#            user = input('Dann gib jetzt den Emüfänger ein: ')
-#        else:
-#            print("E-Mail wird übersprungen. Versuch's später nochmal mit mehr Enthusiasmus")
-#            return False
-#    print('Benutzer {} gefunden'.format(user))
-#    return user
-
-
 if __name__ == "__main__":
 
     MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
     MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
 
-    # login = getpass.getuser()
-    # password = getpass.getpass(prompt='Passwort für deinen Mail-Account: ')
-    # print(login)
-    # print(password)
-
     # disables error messages
     sys.tracebacklimit = 0
 
+    # check system 'Fachschaftsserver'
+#     output = subprocess.check_output(["uname", "-n"]).decode("utf-8")
+#
+#     if ('arcadia' not in output or 'blueberry' not in output):
+#        raise Exception("Im Moment funktioniert das Skript nur auf dem Fachschaftsserver. Versuch es da nochmal.")
     parser = argparse.ArgumentParser()
     parser.add_argument("infile", metavar="[path/to/file]", type=argparse.FileType('r'))
     args = parser.parse_args()
-
     check_path(path=args.infile.name)
+
     protocol = Protocol(path=args.infile.name)
     protocol.get_tops()
     protocol.get_users()
-    for top in protocol.tops:
-        print("Start: {}".format(top.start))
-        print(top.users)
-        print(top.mails)
-        print("Ende: {}".format(top.end))
-
     protocol.rename_title()
-    # protocol.send_mails()
+    protocol.send_mails()
     protocol.write_success()
-
-
-    # print(mails)
