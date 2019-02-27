@@ -1,13 +1,14 @@
 # Requirements
 In order to run `dude.py` you need to install a few python modules.
+
 The needed modules are listen in the file `requirements.txt`, you can therefore install them using `pip`.
-```bash
+```
 # pip3 install -r requirements.txt
 ```
 
 or
 
-```bash
+```
 $ pip3 install --user -r requirements.txt
 ```
 
@@ -16,7 +17,7 @@ $ pip3 install --user -r requirements.txt
 ```bash
 $ ./dude.py _protcol.txt_
 ```
-The name of the protocol should be in the format `yyyy-mm-dd.txt`.
+The name of the protocol is expected to have the format `yyyy-mm-dd.txt`.
 
 ## parsed sequences
 
@@ -30,7 +31,7 @@ Item 1: Usage of the protocoldude
 ===
 ```
 
-They will then be prepended with the sufficent amout of '=' to look like this:
+They will then be prepended with the sufficent amount of '`=`' to look like this:
 
 ```
 =================================
