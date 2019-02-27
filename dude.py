@@ -11,34 +11,44 @@ import argparse
 import datetime
 import subprocess
 import sys
-import ldap
 import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 import getpass
 
-# define common mail lists
-list_users = [["fachschaft", "Liebe Fachschaft"]]
-list_users.append(["flachschaft", "Liebe Fachschaft"])
-list_users.append(["bernd", "Liebe Fachschaft"])
-list_users.append(["fsinformatik", "Liebe Fachschaft"])
-list_users.append(["fsphysik", "Liebe Fachschaft"])
-list_users.append(["fsmathematik", "Liebe Fachschaft"])
-list_users.append(["fsmathinf", "Liebe Fachschaft"])
-list_users.append(["infostudkom", "Liebes Mitglied der Studienkommission Informatik"])
-list_users.append(["tistudkom", "Liebes Mitglied der Studkom TI"])
-list_users.append(["mathstudkom", "Liebe MathStudKomLerInnen"])
-list_users.append(["mathestudkom", "Liebe MathStudKomLerInnen"])
-list_users.append(["physstudkom", "Liebe Mitglied der Studkom Physik"])
-list_users.append(["physikstudkom", "Liebe Mitglied der Studkom Physik"])
-list_users.append(["studkomphysik", "Liebe Mitglied der Studkom Physik"])
-list_users.append(["scstudkom", "Liebe Mitglied der Studkom SciCom"])
-list_users.append(["mathfakrat", "Liebes Mitglied des MatheInfo-Fakrats"])
-list_users.append(["fakratmathinf", "Liebes Mitglied des MatheInfo-Fakrats"])
-list_users.append(["physfakrat", "Liebes Mitglied des Physik-Fakrats"])
-list_users.append(["fakratphys", "Liebes Mitglied des Physik-Fakrats"])
-list_users.append(["fakratphysik", "Liebes Mitglied des Physik-Fakrats"])
-list_users.append(["akfest", "Liebes Mitglied der AK-Fest Liste"])
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+import ldap
+
+__version__ = "v1.0.0"
+
+MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
+MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
+
+# define common mail lists and aliases
+LIST_USERS = [
+    ["fachschaft", "Liebe Fachschaft"],
+    ["flachschaft", "Liebe Fachschaft"],
+    ["bernd", "Liebe Fachschaft"],
+    ["fsinformatik", "Liebe Fachschaft"],
+    ["fsphysik", "Liebe Fachschaft"],
+    ["fsmathematik", "Liebe Fachschaft"],
+    ["fsmathinf", "Liebe Fachschaft"],
+    ["infostudkom", "Liebes Mitglied der Studienkommission Informatik"],
+    ["tistudkom", "Liebes Mitglied der Studkom TI"],
+    ["mathstudkom", "Liebe MathStudKomLerInnen"],
+    ["mathestudkom", "Liebe MathStudKomLerInnen"],
+    ["physstudkom", "Liebe Mitglied der Studkom Physik"],
+    ["physikstudkom", "Liebe Mitglied der Studkom Physik"],
+    ["studkomphysik", "Liebe Mitglied der Studkom Physik"],
+    ["scstudkom", "Liebe Mitglied der Studkom SciCom"],
+    ["mathfakrat", "Liebes Mitglied des MatheInfo-Fakrats"],
+    ["fakratmathinf", "Liebes Mitglied des MatheInfo-Fakrats"],
+    ["physfakrat", "Liebes Mitglied des Physik-Fakrats"],
+    ["fakratphys", "Liebes Mitglied des Physik-Fakrats"],
+    ["fakratphysik", "Liebes Mitglied des Physik-Fakrats"],
+    ["akfest", "Liebes Mitglied der AK-Fest Liste"],
+]
+
 
 def check_path(path: str) -> bool:
     """checks the input file name for a valid date and type .txt"""
@@ -47,11 +57,10 @@ def check_path(path: str) -> bool:
     date = path[8:9].isnumeric()
     name = year and month and date and path[4] is '-' and path[7] is '-'
 
-    if path.endswith('.txt'):
-        return True
-    else:
+    if not path.endswith('.txt'):
         raise Exception('Der Dateipfad führt nicht zu einem Sitzungsprotokoll oder du schaust besser nochmal über den Filenamen!')
-        return False
+    return True
+
 
 class Protocol(object):
     """reads in the protocol and processes it"""
@@ -78,8 +87,10 @@ class Protocol(object):
     def rename_title(self):
         """Adjust TOP title type setting"""
         for top in self.tops:
-            if not self.protocol[top.start+1].startswith("TOP: "): self.protocol[top.start+1] = "TOP " + str(top.number) + ": " + self.protocol[top.start+1]
-            else: self.protocol[top.start+1] = self.protocol[top.start+1][:3] + str(top.number) + " " + self.protocol[top.start+1][3:]
+            if not self.protocol[top.start+1].startswith("TOP: "):
+                self.protocol[top.start+1] = "TOP " + str(top.number) + ": " + self.protocol[top.start+1]
+            else:
+                self.protocol[top.start+1] = self.protocol[top.start+1][:3] + str(top.number) + " " + self.protocol[top.start+1][3:]
             length = len(self.protocol[top.start+1])
             self.protocol[top.start+2] = "="*length
             self.protocol[top.start] = "="*length
@@ -93,7 +104,7 @@ class Protocol(object):
         try:
             server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
             login = input('Uni ID für den Mailversand: ')
-            server.login(login, getpass.getpass(prompt='Passwort für deinen Uni Account: '))   
+            server.login(login, getpass.getpass(prompt='Passwort für deinen Uni Account: '))
 
             for top in self.tops:
                 top.send_mail(server, self.protocol)
@@ -101,9 +112,8 @@ class Protocol(object):
             self.mails = True
             print("\nAlle Mails wurden erfolgreich verschickt. \n")
         except Exception as e:
-            print(e)
+            print(e.what())
             print("\nMails konnten nicht verschickt werden. Hast du die richtigen Anmeldedaten eingegeben?")
-            pass
 
     def write_success(self):
         if self.mails:
@@ -113,19 +123,22 @@ class Protocol(object):
 
         with open(self.path, 'w') as file:
             file.write('\n'.join(self.protocol) + '\n')
+        # TODO: more specific exception handling
         try:
             subprocess.run(['svn', 'up'], check=True)
             subprocess.run(['svn', 'add', '{}'.format(self.path)], check=True)
             subprocess.run(['svn', 'commit', '-m', '"Protokoll der gemeinsamen Sitzung hinzugefügt"'], check=True)
             print("Protokoll bearbeitet und in den Sumpf geschrieben.\n Für heute hast du's geschafft!")
-        except: 
+        except:
             print("Konnte SVN Update nicht durchführen. \n Das musst Du irgendwie von Hand reparieren mit 'svn cleanup' oder so.")
             print("Das Protokoll wurde trotzdem bearbeitet und gespeichert.")
-            pass
 
 
 class TOP(Protocol):
-    """Separates the several TOPs out of one protocol and provides different functions to further process the sections"""
+    """
+    Separates the several TOPs out of one protocol and provides different 
+    functions to further process the sections.
+    """
 
     def __init__(self, number: int, start: int, end: int):
         self.number = number
@@ -136,7 +149,7 @@ class TOP(Protocol):
 
     def get_user(self, protocol: list):
         """searches for all mentioned users in the TOP paragraph"""
-# TODO: recognize multiple users in one line
+        # TODO: recognize multiple users in one line
         for line in protocol[self.start:self.end]:
             # check for mail address
             if "${" in line and "}" in line:
@@ -145,18 +158,18 @@ class TOP(Protocol):
                 user = line[start+2:end]
                 self.users.append(user)
 
-        self.users = list(set(self.users)) # remove duplicates
+        self.users = list(set(self.users))  # remove duplicates
 
     def get_mails(self):
         if extract_mails(ldap_search(self.users)) is not None:
             self.mails = extract_mails(ldap_search(self.users))
 
         for user in self.users:
-            if user in list_users[:][0]:
+            if user in LIST_USERS[:][0]:
                 self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
 
     def send_mail(self, server, protocol):
-        for user,mail in zip(self.users,self.mails):
+        for user, mail in zip(self.users, self.mails):
             fromaddr = "fachschaft@mathphys.stura.uni-heidelberg.de"
 
             msg = MIMEMultipart()
@@ -164,8 +177,8 @@ class TOP(Protocol):
             msg['To'] = mail
             msg['Subject'] = "Gemeinsame Sitzung: {}".format(protocol[self.start+1])
 
-            if user in list_users[:][0]:
-                body = list_users[list_users[:][0].index(user)][1] + ",\n\n"
+            if user in LIST_USERS[:][0]:
+                body = LIST_USERS[LIST_USERS[:][0].index(user)][1] + ",\n\n"
             else:
                 body = "Hallo {},\n\n".format(user)
             body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format('\n'.join(protocol[self.start:self.end])+'\n')
@@ -175,6 +188,7 @@ class TOP(Protocol):
 
             text = msg.as_string()
             server.sendmail(fromaddr, mail, text)
+
 
 def ldap_search(users: list) -> list:
     """ searches for a list of users in our ldap """
@@ -188,31 +202,36 @@ def ldap_search(users: list) -> list:
     )
     return query_result
 
+
 def extract_mails(query: list) -> list:
     """ extract mails from nonempty ldap queries """
+    mails = []
     if query:
-        mails = []
         for result in query:
-            dn = result[0]
+            # dn = result[0]
             attributes = result[1]
             mails.append(attributes["mail"][0].decode('utf-8'))
-        return mails
+    return mails
 
-if __name__ == "__main__":
-
-    MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
-    MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
-
+def main():
     # disables error messages
     sys.tracebacklimit = 0
 
-    # check system 'Fachschaftsserver'
-#     output = subprocess.check_output(["uname", "-n"]).decode("utf-8")
-#
-#     if ('arcadia' not in output or 'blueberry' not in output):
-#        raise Exception("Im Moment funktioniert das Skript nur auf dem Fachschaftsserver. Versuch es da nochmal.")
     parser = argparse.ArgumentParser()
-    parser.add_argument("infile", metavar="[path/to/file]", type=argparse.FileType('r'))
+    parser.add_argument(
+        "infile",
+        metavar="./path/to/file",
+        type=argparse.FileType('r'),
+        help="Path to the protcol. Expects filename to have have the following format: 'yyyy-mm-dd.txt'"
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        help="Print the version and exit.",
+        action="version",
+        version=__version__
+    )
+
     args = parser.parse_args()
     check_path(path=args.infile.name)
 
@@ -222,3 +241,7 @@ if __name__ == "__main__":
     protocol.rename_title()
     protocol.send_mails()
     protocol.write_success()
+
+
+if __name__ == "__main__":
+    main()
