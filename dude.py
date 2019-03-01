@@ -77,12 +77,22 @@ class Protocol(object):
 
     def get_tops(self):
         """separate the given protocol in several TOPs from '===' to '==='"""
-        for i, line in enumerate(self.protocol):
-            # check for TOP title
-            if line.startswith("===") and self.protocol[i+2].startswith("==="):
-                end = self.protocol[i+3:].index("===")+i+2 if (line in self.protocol[i+3:]) else len(self.protocol)-1
-                top = TOP(len(self.tops)+1, i, end)
-                self.tops.append(top)
+        title_lines = []
+
+        for i in range(len(self.protocol) - 2):
+            line_a = self.protocol[i]
+            line_b = self.protocol[i + 2]
+
+            if line_a.startswith("===") and line_b.startswith("==="):
+                title_lines.append(i + 1)
+
+        title_lines.append(len(self.protocol) + 1)
+
+        for i in range(len(title_lines) - 1):
+            begin = title_lines[i] + 2
+            end = title_lines[i+1] - 1
+            top = TOP(i + 1, begin, end)
+            self.tops.append(top)
 
     def rename_title(self):
         """Adjust TOP title type setting"""
