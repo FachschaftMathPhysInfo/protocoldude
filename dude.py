@@ -11,6 +11,7 @@ import argparse
 import datetime
 import subprocess
 import sys
+import re
 import smtplib
 import getpass
 
@@ -159,16 +160,12 @@ class TOP(Protocol):
 
     def get_user(self, protocol: list):
         """searches for all mentioned users in the TOP paragraph"""
-        # TODO: recognize multiple users in one line
+        users = []
         for line in protocol[self.start:self.end]:
             # check for mail address
-            if "${" in line and "}" in line:
-                start = line.index("${")
-                end = line.index("}")
-                user = line[start+2:end]
-                self.users.append(user)
-
-        self.users = list(set(self.users))  # remove duplicates
+            adress = re.findall('\$\{(.*?)\}', line)
+            users += adress
+        self.users = list(set(users))  # remove duplicates
 
     def get_mails(self):
         if extract_mails(ldap_search(self.users)) is not None:
