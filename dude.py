@@ -15,6 +15,7 @@ import smtplib
 import getpass
 import tempfile
 import urllib.request
+import sys
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -128,55 +129,44 @@ class Protocol(object):
         title_lines.append(len(self.protocol) + 1)
 
         for i in range(len(title_lines) - 1):
-            begin = title_lines[i] + 2
-            end = title_lines[i + 1] - 1
-            top = TOP(i + 1, begin, end, self.args)
+            begin = title_lines[i]
+            end = begin + 2
+            top = TOP(i + 1, begin, end, self.protocol, self.args)
             self.tops.append(top)
 
     def rename_title(self):
         """Adjust TOP title type setting"""
         for top in self.tops:
-            if not self.protocol[top.start + 1].startswith("TOP"):
-                self.protocol[top.start + 1] = (
-                    "TOP " + str(top.number) + ": " + self.protocol[top.start + 1]
-                )
-            else:
-                self.protocol[top.start + 1] = (
-                    self.protocol[top.start + 1][:3]
-                    + str(top.number)
-                    + " "
-                    + self.protocol[top.start + 1][3:]
-                )
-            length = len(self.protocol[top.start + 1])
-            self.protocol[top.start + 2] = "=" * length
-            self.protocol[top.start] = "=" * length
+            top.rename()
 
     def get_users(self):
         for top in self.tops:
-            top.get_user(self.protocol)
+            top.get_user()
             top.get_mails()
 
-    def send_mails(self, username=""):
+    def send_mails(self, username="", tries=0):
         try:
             server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
+            prompt = "Passwort für deinen Uni Account: "
             if not username:
                 username = input("Uni ID für den Mailversand: ")
+            prompt = "Passwort für {}: ".format(username)
             server.login(
-                username, getpass.getpass(prompt="Passwort für deinen Uni Account: ")
+                username, getpass.getpass(prompt=prompt)
             )
 
+            mailcount = 0
             for top in self.tops:
-                top.send_mail(server, self.protocol)
+                mailcount += top.send_mail(server)
             server.quit()
             self.mails_sent = True
-            print("\nAlle Mails wurden erfolgreich verschickt. \n")
+            print("\nEs wurden erfolgreich {} Mails verschickt.\n".format(mailcount))
         except smtplib.SMTPAuthenticationError:
             print("Du hast die Falschen Anmeldedaten eingegeben!")
             print("Bitte versuche es noch einmal:")
-            print(username)
-            self.send_mails(username)
+            self.send_mails(username=username, tries=tries+1)
         except Exception as e:
-            print(e.what())
+            print(e)
             print(
                 "\nMails konnten nicht verschickt werden. Hast du die richtigen Anmeldedaten eingegeben?"
             )
@@ -224,21 +214,32 @@ class TOP(Protocol):
     functions to further process the sections.
     """
 
-    def __init__(self, number: int, start: int, end: int, args):
+    def __init__(self, number: int, start: int, end: int, protocol, args):
         self.args = args
         self.number = number
         self.start = start
         self.end = end
         self.users = []
         self.mails = []
+        self.protocol = protocol
+        self.title = TOP_Title(start-1, start+2, self.protocol[start])
 
-    def get_user(self, protocol: list):
+    def rename(self):
+        self.title.rename(self.number)
+        # apply the changes in the title to the protocol
+        title = self.title.list()
+        for p_index, t_index in zip(range(self.title.start, self.title.end), range(len(title))):
+            self.protocol[p_index] = title[t_index]
+
+    def get_user(self):
         """searches for all mentioned users in the TOP paragraph"""
         users = []
-        for line in protocol[self.start : self.end]:
+        for line in self.protocol[self.start : self.end]:
             # check for mail address
-            adress = re.findall("\$\{(.*?)\}", line)
+            adress = re.findall(r"\$\{(.*?)\}", line)
             users += adress
+        #TODO: DEBUG
+        print(users, self.protocol[self.start:self.end])
         self.users = list(set(users))  # remove duplicates
 
     def get_mails(self):
@@ -249,21 +250,21 @@ class TOP(Protocol):
             if user in LIST_USERS[:][0]:
                 self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
 
-    def send_mail(self, server, protocol):
+    def send_mail(self, server):
         for user, mail in zip(self.users, self.mails):
             from_addr = self.args.from_address
 
             msg = MIMEMultipart()
             msg["From"] = from_addr
             msg["To"] = mail
-            msg["Subject"] = self.args.mail_subject_prefix+": "+str(protocol[self.start + 1])
+            msg["Subject"] = self.args.mail_subject_prefix+": "+str(self.protocol[self.start + 1])
 
             if user in LIST_USERS[:][0]:
                 body = LIST_USERS[LIST_USERS[:][0].index(user)][1] + ",\n\n"
             else:
                 body = "Hallo {},\n\n".format(user)
             body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(
-                "\n".join(protocol[self.start : self.end]) + "\n"
+                "\n".join(self.protocol[self.start:self.end]) + "\n"
             )
             # \n\nSollte der Text abgeschnitten sein, schaue bitte im Sitzungsprotokoll nach (Zeile #{tops[i]} – MathPhys Login notwendig).\n#{url}/#{file}\" | mail -a \"Reply-To: #{$replyto}\" -a \"Content-Type: text/plain; charset=UTF-8\" -s \"#{$subject}: #{title} (#{date})\" '#{mail}';", false) unless $debug
 
@@ -271,6 +272,7 @@ class TOP(Protocol):
 
             text = msg.as_string()
             server.sendmail(from_addr, mail, text)
+        return len(self.mails)
 
 
 def ldap_search(users: list) -> list:
@@ -278,7 +280,11 @@ def ldap_search(users: list) -> list:
     server = ldap.initialize("ldaps://" + MATHPHYS_LDAP_ADDRESS)
     users = ["(uid={})".format(user) for user in users]
     query = "(|{})".format("".join(users))
-    query_result = server.search_s(MATHPHYS_LDAP_BASE_DN, ldap.SCOPE_SUBTREE, query)
+    query_result = server.search_s(
+        MATHPHYS_LDAP_BASE_DN,
+        ldap.SCOPE_SUBTREE,
+        query
+    )
     return query_result
 
 
@@ -293,9 +299,36 @@ def extract_mails(query: list) -> list:
     return mails
 
 
+class TOP_Title:
+    def __init__(self):
+        self.start = -1
+        self.end = -1
+        self.title_text = ""
+
+    def __init__(self, start, end, title_text):
+        self.start = start
+        self.end = end
+        self.title_text = title_text
+
+    def __str__(self):
+        return_str = ""
+        if self.title_text:
+            length = len(self.title_text)
+            return_str = "=" * length
+            return_str += "\n" + self.title_text + "\n"
+            return_str += "=" * length
+        return return_str
+    def list(self):
+        return str(self).split("\n")
+
+    def rename(self, number):
+        if "TOP" not in self.title_text or "Top" not in self.title_text:
+            self.title_text = "TOP {}: {}".format(number, self.title_text)
+        # print(self)
+
 def main():
     # disables error messages
-    # sys.tracebacklimit = 0
+    sys.tracebacklimit = 0
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
