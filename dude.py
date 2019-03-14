@@ -124,13 +124,13 @@ class Protocol(object):
             line_b = self.protocol[i + 2]
 
             if line_a.startswith("===") and line_b.startswith("==="):
-                title_lines.append(i + 1)
+                title_lines.append(i)
 
         title_lines.append(len(self.protocol) + 1)
 
         for i in range(len(title_lines) - 1):
             begin = title_lines[i]
-            end = title_lines[i+1] - 2
+            end = title_lines[i+1] - 1
             top = TOP(i + 1, begin, end, self.protocol, self.args)
             self.tops.append(top)
 
@@ -160,7 +160,10 @@ class Protocol(object):
                 mailcount += top.send_mail(server)
             server.quit()
             self.mails_sent = True
-            print("\nEs wurden erfolgreich {} Mails verschickt.\n".format(mailcount))
+            if mailcount == 1:
+                print("\nEs wurde erfolgreich eine Mail versendet!\n")
+            else:
+                print("\nEs wurden erfolgreich {} Mails verschickt.\n".format(mailcount))
         except smtplib.SMTPAuthenticationError:
             print("Du hast die Falschen Anmeldedaten eingegeben!")
             print("Bitte versuche es noch einmal:")
@@ -222,7 +225,10 @@ class TOP(Protocol):
         self.users = []
         self.mails = []
         self.protocol = protocol
-        self.title = TOP_Title(start-1, start+2, self.protocol[start])
+        self.title = TOP_Title(start, start+3, self.protocol[start+1])
+
+    def __str__(self):
+        return "\n".join(self.protocol[self.start:self.end])
 
     def rename(self):
         self.title.rename(self.number)
@@ -234,15 +240,16 @@ class TOP(Protocol):
     def get_user(self):
         """searches for all mentioned users in the TOP paragraph"""
         users = []
-        for line in self.protocol[self.start : self.end]:
+        for line in self.protocol[self.start:self.end]:
             # check for mail address
             adress = re.findall(r"\$\{(.*?)\}", line)
             users += adress
         self.users = list(set(users))  # remove duplicates
 
     def get_mails(self):
-        if extract_mails(ldap_search(self.users)) is not None:
-            self.mails = extract_mails(ldap_search(self.users))
+        result = extract_mails(ldap_search(self.users))
+        if result is not None:
+            self.mails = result
 
         for user in self.users:
             if user in LIST_USERS[:][0]:
@@ -255,14 +262,14 @@ class TOP(Protocol):
             msg = MIMEMultipart()
             msg["From"] = from_addr
             msg["To"] = mail
-            msg["Subject"] = self.args.mail_subject_prefix+": "+str(self.protocol[self.start + 1])
+            msg["Subject"] = self.args.mail_subject_prefix+": "+self.title.title_text
 
             if user in LIST_USERS[:][0]:
                 body = LIST_USERS[LIST_USERS[:][0].index(user)][1] + ",\n\n"
             else:
                 body = "Hallo {},\n\n".format(user)
             body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(
-                "\n".join(self.protocol[self.start:self.end]) + "\n"
+                self.__str__() + "\n"
             )
             # \n\nSollte der Text abgeschnitten sein, schaue bitte im Sitzungsprotokoll nach (Zeile #{tops[i]} – MathPhys Login notwendig).\n#{url}/#{file}\" | mail -a \"Reply-To: #{$replyto}\" -a \"Content-Type: text/plain; charset=UTF-8\" -s \"#{$subject}: #{title} (#{date})\" '#{mail}';", false) unless $debug
 
@@ -276,23 +283,27 @@ class TOP(Protocol):
 def ldap_search(users: list) -> list:
     """ searches for a list of users in our ldap """
     server = ldap.initialize("ldaps://" + MATHPHYS_LDAP_ADDRESS)
-    users = ["(uid={})".format(user) for user in users]
-    query = "(|{})".format("".join(users))
-    query_result = server.search_s(
-        MATHPHYS_LDAP_BASE_DN,
-        ldap.SCOPE_SUBTREE,
-        query
-    )
-    return query_result
+    users = [(user, "(uid={})".format(user)) for user in users]
+    users = [(
+        user, server.search_s(
+            MATHPHYS_LDAP_BASE_DN,
+            ldap.SCOPE_SUBTREE,
+            query
+        )
+    ) for user, query in users]
+    return users
 
 
 def extract_mails(query: list) -> list:
     """ extract mails from nonempty ldap queries """
     mails = []
     if query:
-        for result in query:
+        for user, result in query:
             # dn = result[0]
-            attributes = result[1]
+            if not result:
+                # TODO: Implement select of alternatives
+                pass
+            attributes = result[0][1]
             mails.append(attributes["mail"][0].decode("utf-8"))
     return mails
 
@@ -316,16 +327,16 @@ class TOP_Title:
             return_str += "\n" + self.title_text + "\n"
             return_str += "=" * length
         return return_str
+
     def list(self):
         return str(self).split("\n")
 
     def rename(self, number):
         if not re.search(r'(?i)TOP\s+\d+:', self.title_text):
-            print(self.title_text)
             self.title_text = "TOP {}: {}".format(number, self.title_text)
 
 def main():
-    # disables error messages
+    # comment to disables error messages
     sys.tracebacklimit = 0
 
     parser = argparse.ArgumentParser()
