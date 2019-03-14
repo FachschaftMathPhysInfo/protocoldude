@@ -83,7 +83,6 @@ class Protocol(object):
         else:
             with open(self.path, "r") as file:
                 self.protocol = file.read().splitlines()
-        print(self.protocol)
         self.tops = []
         self.mails_sent = False
         check_path(path=self.path)
@@ -127,7 +126,6 @@ class Protocol(object):
                 title_lines.append(i + 1)
 
         title_lines.append(len(self.protocol) + 1)
-        print(title_lines)
 
         for i in range(len(title_lines) - 1):
             begin = title_lines[i] + 2
@@ -252,7 +250,7 @@ class TOP(Protocol):
             msg = MIMEMultipart()
             msg["From"] = from_addr
             msg["To"] = mail
-            msg["Subject"] = "Gemeinsame Sitzung: {}".format(protocol[self.start + 1])
+            msg["Subject"] = self.args.mail_subject_prefix+":"+protocol[self.start + 1]
 
             if user in LIST_USERS[:][0]:
                 body = LIST_USERS[LIST_USERS[:][0].index(user)][1] + ",\n\n"
@@ -319,6 +317,13 @@ def main():
         dest="from_address",
     )
     parser.add_argument(
+        "--mail-subject",
+        help="Set the subject for the generated mail",
+        action="store",
+        default="Gemeinsame Sitzung",
+        dest="mail_subject_prefix",
+    )
+    parser.add_argument(
         "-v",
         "--version",
         help="Print the version and exit.",
@@ -331,7 +336,7 @@ def main():
     protocol = Protocol(args)
     protocol.get_tops()
     protocol.get_users()
-    protocol.rename_title()
+    # protocol.rename_title()
     if not args.disable_mail:
         protocol.send_mails()
     else:
