@@ -156,12 +156,13 @@ class Protocol(object):
             top.get_user(self.protocol)
             top.get_mails()
 
-    def send_mails(self):
+    def send_mails(self, username=""):
         try:
             server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
-            login = input("Uni ID für den Mailversand: ")
+            if not username:
+                username = input("Uni ID für den Mailversand: ")
             server.login(
-                login, getpass.getpass(prompt="Passwort für deinen Uni Account: ")
+                username, getpass.getpass(prompt="Passwort für deinen Uni Account: ")
             )
 
             for top in self.tops:
@@ -169,6 +170,11 @@ class Protocol(object):
             server.quit()
             self.mails_sent = True
             print("\nAlle Mails wurden erfolgreich verschickt. \n")
+        except smtplib.SMTPAuthenticationError:
+            print("Du hast die Falschen Anmeldedaten eingegeben!")
+            print("Bitte versuche es noch einmal:")
+            print(username)
+            self.send_mails(username)
         except Exception as e:
             print(e.what())
             print(
@@ -250,7 +256,7 @@ class TOP(Protocol):
             msg = MIMEMultipart()
             msg["From"] = from_addr
             msg["To"] = mail
-            msg["Subject"] = self.args.mail_subject_prefix+":"+protocol[self.start + 1]
+            msg["Subject"] = self.args.mail_subject_prefix+": "+str(protocol[self.start + 1])
 
             if user in LIST_USERS[:][0]:
                 body = LIST_USERS[LIST_USERS[:][0].index(user)][1] + ",\n\n"
@@ -336,7 +342,7 @@ def main():
     protocol = Protocol(args)
     protocol.get_tops()
     protocol.get_users()
-    # protocol.rename_title()
+    protocol.rename_title()
     if not args.disable_mail:
         protocol.send_mails()
     else:
