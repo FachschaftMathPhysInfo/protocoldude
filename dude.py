@@ -130,7 +130,7 @@ class Protocol(object):
 
         for i in range(len(title_lines) - 1):
             begin = title_lines[i]
-            end = begin + 2
+            end = title_lines[i+1] - 2
             top = TOP(i + 1, begin, end, self.protocol, self.args)
             self.tops.append(top)
 
@@ -238,8 +238,6 @@ class TOP(Protocol):
             # check for mail address
             adress = re.findall(r"\$\{(.*?)\}", line)
             users += adress
-        #TODO: DEBUG
-        print(users, self.protocol[self.start:self.end])
         self.users = list(set(users))  # remove duplicates
 
     def get_mails(self):
@@ -322,9 +320,9 @@ class TOP_Title:
         return str(self).split("\n")
 
     def rename(self, number):
-        if "TOP" not in self.title_text or "Top" not in self.title_text:
+        if not re.search(r'(?i)TOP\s+\d+:', self.title_text):
+            print(self.title_text)
             self.title_text = "TOP {}: {}".format(number, self.title_text)
-        # print(self)
 
 def main():
     # disables error messages
