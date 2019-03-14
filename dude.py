@@ -13,6 +13,8 @@ import subprocess
 import re
 import smtplib
 import getpass
+import tempfile
+import urllib.request
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -70,14 +72,48 @@ class Protocol(object):
     def __init__(self, args):
         # validate filename as protocol (yyyy-mm-dd) and .txt
         self.args = args
-        self.path = args.infile.name
+        self.path = args.infile
 
         print('\nProtokoll "{}" wird bearbeitet ..\n'.format(self.path))
 
-        with open(self.path, "r") as file:
-            self.protocol = file.read().splitlines()
+        if "http" in self.path:
+            self.protocol = self.download_protocol(self.path)
+            splitted = self.path.split("/")
+            self.path = splitted[len(splitted)-1]+'.txt'
+        else:
+            with open(self.path, "r") as file:
+                self.protocol = file.read().splitlines()
+        print(self.protocol)
         self.tops = []
-        self.mails = False
+        self.mails_sent = False
+        check_path(path=self.path)
+
+    def download_protocol(self, url, save_path=""):
+        """Downloads a protocol
+
+        URL: The URL to download the Protocol from
+
+        """
+        export_suffix = ""
+        if "pad" in url:
+            export_suffix = "/export/txt"
+        # if "notes" in url:
+            # import kerberos
+            # __, krb_context = kerberos.authGSSClientInit("chris")
+            # kerberos.authGSSClientStep(krb_context, getpass.getpass(prompt="Passwort für deinen Account: "))
+            # kerberos.authGSSClientStep(krb_context, "")
+            # negotiate_details = kerberos.authGSSClientResponse(krb_context)
+            # headers = {"Authorization": "Negotiate " + negotiate_details}
+            # print(headers)
+        if not save_path:
+            save_path = tempfile.NamedTemporaryFile()
+            urllib.request.urlretrieve(url+export_suffix, save_path.name)
+            with save_path.file as f:
+                protocol = [line.decode("utf-8") for line in f.read().splitlines()]
+            print(save_path.name)
+            return protocol
+        else:
+            urllib.request.urlretrieve(url, save_path)
 
     def get_tops(self):
         """separate the given protocol in several TOPs from '===' to '==='"""
@@ -91,6 +127,7 @@ class Protocol(object):
                 title_lines.append(i + 1)
 
         title_lines.append(len(self.protocol) + 1)
+        print(title_lines)
 
         for i in range(len(title_lines) - 1):
             begin = title_lines[i] + 2
@@ -132,7 +169,7 @@ class Protocol(object):
             for top in self.tops:
                 top.send_mail(server, self.protocol)
             server.quit()
-            self.mails = True
+            self.mails_sent = True
             print("\nAlle Mails wurden erfolgreich verschickt. \n")
         except Exception as e:
             print(e.what())
@@ -141,7 +178,7 @@ class Protocol(object):
             )
 
     def write_success(self):
-        if self.mails:
+        if self.mails_sent:
             now = datetime.datetime.now()
             self.protocol.insert(
                 0,
@@ -259,8 +296,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "infile",
-        metavar="./path/to/file",
-        type=argparse.FileType("r"),
+        metavar="<file>",
         help="Path to the protcol. Expects filename to have have the following format: 'yyyy-mm-dd.txt'",
     )
     parser.add_argument(
@@ -291,7 +327,6 @@ def main():
     )
 
     args = parser.parse_args()
-    check_path(path=args.infile.name)
 
     protocol = Protocol(args)
     protocol.get_tops()
