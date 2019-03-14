@@ -10,7 +10,6 @@
 import argparse
 import datetime
 import subprocess
-import sys
 import re
 import smtplib
 import getpass
@@ -68,11 +67,12 @@ def check_path(path: str) -> bool:
 class Protocol(object):
     """reads in the protocol and processes it"""
 
-    def __init__(self, path):
+    def __init__(self, args):
         # validate filename as protocol (yyyy-mm-dd) and .txt
-        self.path = path
+        self.args = args
+        self.path = args.infile.name
 
-        print('\nProtokoll "{}" wird bearbeitet .. \n \n'.format(self.path))
+        print('\nProtokoll "{}" wird bearbeitet ..\n'.format(self.path))
 
         with open(self.path, "r") as file:
             self.protocol = file.read().splitlines()
@@ -95,13 +95,13 @@ class Protocol(object):
         for i in range(len(title_lines) - 1):
             begin = title_lines[i] + 2
             end = title_lines[i + 1] - 1
-            top = TOP(i + 1, begin, end)
+            top = TOP(i + 1, begin, end, self.args)
             self.tops.append(top)
 
     def rename_title(self):
         """Adjust TOP title type setting"""
         for top in self.tops:
-            if not self.protocol[top.start + 1].startswith("TOP: "):
+            if not self.protocol[top.start + 1].startswith("TOP"):
                 self.protocol[top.start + 1] = (
                     "TOP " + str(top.number) + ": " + self.protocol[top.start + 1]
                 )
@@ -153,6 +153,8 @@ class Protocol(object):
 
         with open(self.path, "w") as file:
             file.write("\n".join(self.protocol) + "\n")
+
+    def svn_interaction(self):
         # TODO: more specific exception handling
         try:
             subprocess.run(["svn", "up"], check=True)
@@ -175,14 +177,14 @@ class Protocol(object):
             )
             print("Das Protokoll wurde trotzdem bearbeitet und gespeichert.")
 
-
 class TOP(Protocol):
     """
-    Separates the several TOPs out of one protocol and provides different 
+    Separates the several TOPs out of one protocol and provides different
     functions to further process the sections.
     """
 
-    def __init__(self, number: int, start: int, end: int):
+    def __init__(self, number: int, start: int, end: int, args):
+        self.args = args
         self.number = number
         self.start = start
         self.end = end
@@ -208,10 +210,10 @@ class TOP(Protocol):
 
     def send_mail(self, server, protocol):
         for user, mail in zip(self.users, self.mails):
-            fromaddr = "fachschaft@mathphys.stura.uni-heidelberg.de"
+            from_addr = self.args.from_address
 
             msg = MIMEMultipart()
-            msg["From"] = fromaddr
+            msg["From"] = from_addr
             msg["To"] = mail
             msg["Subject"] = "Gemeinsame Sitzung: {}".format(protocol[self.start + 1])
 
@@ -227,7 +229,7 @@ class TOP(Protocol):
             msg.attach(MIMEText(body, "plain"))
 
             text = msg.as_string()
-            server.sendmail(fromaddr, mail, text)
+            server.sendmail(from_addr, mail, text)
 
 
 def ldap_search(users: list) -> list:
@@ -252,7 +254,7 @@ def extract_mails(query: list) -> list:
 
 def main():
     # disables error messages
-    sys.tracebacklimit = 0
+    # sys.tracebacklimit = 0
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -260,6 +262,25 @@ def main():
         metavar="./path/to/file",
         type=argparse.FileType("r"),
         help="Path to the protcol. Expects filename to have have the following format: 'yyyy-mm-dd.txt'",
+    )
+    parser.add_argument(
+        "--disable-svn",
+        help="disable the svn interaction",
+        action="store_true",
+        dest="disable_svn",
+    )
+    parser.add_argument(
+        "--disable-mail",
+        help="disable the sending of mails",
+        action="store_true",
+        dest="disable_mail",
+    )
+    parser.add_argument(
+        "--fromaddr",
+        help="Set 'From:' address for the generated mail",
+        action="store",
+        default="fachschaft@mathphys.stura.uni-heidelberg.de",
+        dest="from_address",
     )
     parser.add_argument(
         "-v",
@@ -272,13 +293,19 @@ def main():
     args = parser.parse_args()
     check_path(path=args.infile.name)
 
-    protocol = Protocol(path=args.infile.name)
+    protocol = Protocol(args)
     protocol.get_tops()
     protocol.get_users()
     protocol.rename_title()
-    protocol.send_mails()
+    if not args.disable_mail:
+        protocol.send_mails()
+    else:
+        print("Mailversand nicht aktiviert!")
     protocol.write_success()
-
+    if not args.disable_svn:
+        protocol.svn_interaction()
+    else:
+        print("Nichts ins SVN commited!")
 
 if __name__ == "__main__":
     main()
