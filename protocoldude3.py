@@ -22,7 +22,7 @@ from email.mime.text import MIMEText
 
 import ldap
 
-__version__ = "v1.0.0"
+__version__ = "v1.0.1"
 
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
@@ -247,13 +247,14 @@ class TOP(Protocol):
         self.users = list(set(users))  # remove duplicates
 
     def get_mails(self):
-        result = extract_mails(ldap_search(self.users))
-        if result is not None:
-            self.mails = result
-
         for user in self.users:
             if user in LIST_USERS[:][0]:
                 self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
+                self.users.remove(user)
+
+        result = extract_mails(ldap_search(self.users))
+        if result is not None:
+            self.mails = result
 
     def send_mail(self, server):
         for user, mail in zip(self.users, self.mails):
@@ -337,7 +338,7 @@ class TOP_Title:
 
 def main():
     # comment to disables error messages
-    sys.tracebacklimit = 0
+    # sys.tracebacklimit = 0
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
