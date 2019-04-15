@@ -1,0 +1,7 @@
+---
+protocoldude:
+  svn: false
+  email:
+    from: "fachschaft@mathphys.stura.uni-heidelberg.de"
+    subject: "Test Sitzung"
+

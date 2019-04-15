@@ -15,14 +15,14 @@ import smtplib
 import getpass
 import tempfile
 import urllib.request
-import sys
+import os
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import ldap
 
-__version__ = "v1.0.1"
+__version__ = "v1.1.0"
 
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
@@ -52,6 +52,22 @@ LIST_USERS = [
     ["akfest", "Liebes Mitglied der AK-Fest Liste"],
 ]
 
+def load_config():
+    """ read a config from a yaml file """
+    if os.path.isfile("./config.yml"):
+        try:
+            import yaml
+        except ImportError as e:
+            print("Wenn du eine config laden möchtest musst du das modul 'pyyaml' installieren!")
+            return
+        with open("config.yml", "r") as stream:
+            try:
+                config = yaml.safe_load(stream)
+                print(config)
+                return config
+            except yaml.YAMLError as exc:
+                print(exc)
+
 
 def check_path(path: str) -> bool:
     """checks the input file name for a valid date and type .txt"""
@@ -70,10 +86,11 @@ def check_path(path: str) -> bool:
 class Protocol(object):
     """reads in the protocol and processes it"""
 
-    def __init__(self, args):
+    def __init__(self, args, config):
         # validate filename as protocol (yyyy-mm-dd) and .txt
         self.args = args
         self.path = args.infile
+        self.config = config if config else ""
 
         print('\nProtokoll "{}" wird bearbeitet ..\n'.format(self.path))
 
@@ -131,7 +148,7 @@ class Protocol(object):
         for i in range(len(title_lines) - 1):
             begin = title_lines[i]
             end = title_lines[i+1] - 1
-            top = TOP(i + 1, begin, end, self.protocol, self.args)
+            top = TOP(i + 1, begin, end, self.protocol, self.args, self.config)
             self.tops.append(top)
 
     def rename_title(self):
@@ -145,6 +162,16 @@ class Protocol(object):
             top.get_mails()
 
     def send_mails(self, username="", tries=0):
+        # checking for config options
+        mail_sending = True
+        if self.config:
+            if self.config["protocoldude"].get("email", ""):
+                mail_sending = self.config["protocoldude"]["email"].get("send", "")
+            if mail_sending is False or self.args.disable_mail:
+                print("Keine Mails versendet!")
+                return
+
+        # login function
         try:
             server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
             prompt = "Passwort für deinen Uni Account: "
@@ -189,6 +216,14 @@ class Protocol(object):
             file.write("\n".join(self.protocol) + "\n")
 
     def svn_interaction(self):
+        svn_enabled = True
+        if self.config:
+            if self.config["protocoldude"].get("svn", ""):
+                svn_enabled = self.config["protocoldude"].get("svn", "")
+                print(svn_enabled)
+            if svn_enabled is False or self.args.disable_svn:
+                print("Nichts ins SVN commited!")
+                return
         # TODO: more specific exception handling
         try:
             subprocess.run(["svn", "up"], check=True)
@@ -211,14 +246,15 @@ class Protocol(object):
             )
             print("Das Protokoll wurde trotzdem bearbeitet und gespeichert.")
 
+
 class TOP(Protocol):
     """
     Separates the several TOPs out of one protocol and provides different
     functions to further process the sections.
     """
-
-    def __init__(self, number: int, start: int, end: int, protocol, args):
+    def __init__(self, number: int, start: int, end: int, protocol, args, config):
         self.args = args
+        self.config = config
         self.number = number
         self.start = start
         self.end = end
@@ -257,13 +293,23 @@ class TOP(Protocol):
             self.mails = result
 
     def send_mail(self, server):
+        from_addr = self.args.from_address
+        subject = self.args.mail_subject_prefix
+        # checking for config options
+        if self.config:
+            if self.config["protocoldude"].get("email", ""):
+                new_from_addr = self.config["protocoldude"]["email"].get("from", "")
+                if new_from_addr:
+                    from_addr = new_from_addr
+                new_subject = self.config["protocoldude"]["email"].get("subject", "")
+                if new_subject:
+                    subject = new_subject
         for user, mail in zip(self.users, self.mails):
-            from_addr = self.args.from_address
 
             msg = MIMEMultipart()
             msg["From"] = from_addr
             msg["To"] = mail
-            msg["Subject"] = self.args.mail_subject_prefix+": "+self.title.title_text
+            msg["Subject"] = subject+": "+self.title.title_text
 
             if user in LIST_USERS[:][0]:
                 body = LIST_USERS[LIST_USERS[:][0].index(user)][1] + ",\n\n"
@@ -381,20 +427,15 @@ def main():
     )
 
     args = parser.parse_args()
+    config = load_config()
 
-    protocol = Protocol(args)
+    protocol = Protocol(args, config)
     protocol.get_tops()
     protocol.get_users()
     protocol.rename_title()
-    if not args.disable_mail:
-        protocol.send_mails()
-    else:
-        print("Mailversand nicht aktiviert!")
+    protocol.send_mails()
     protocol.write_success()
-    if not args.disable_svn:
-        protocol.svn_interaction()
-    else:
-        print("Nichts ins SVN commited!")
+    protocol.svn_interaction()
 
 if __name__ == "__main__":
     main()
