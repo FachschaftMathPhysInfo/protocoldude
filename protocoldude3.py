@@ -301,11 +301,12 @@ def extract_mails(query: list) -> list:
     if query:
         for user, result in query:
             # dn = result[0]
-            if not result:
-                # TODO: Implement select of alternatives
-                pass
-            attributes = result[0][1]
-            mails.append(attributes["mail"][0].decode("utf-8"))
+            print("Result: {}".format(result))
+            print("User: {}".format(user))
+            if result:
+                attributes = result[0][1]
+                mails.append(attributes["mail"][0].decode("utf-8"))
+            # TODO: Implement select of alternatives
     return mails
 
 
