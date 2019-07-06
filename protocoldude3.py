@@ -50,6 +50,8 @@ LIST_USERS = [
     ["fakratphys", "Liebes Mitglied des Physik-Fakrats"],
     ["fakratphysik", "Liebes Mitglied des Physik-Fakrats"],
     ["akfest", "Liebes Mitglied der AK-Fest Liste"],
+    ["vertagt", "Liebe SiMo"],
+    ["schluesselinhaber", "Liebe/r Bewohner/in des Fachschaftsraums"],
 ]
 
 
@@ -253,7 +255,11 @@ class TOP(Protocol):
                 self.users.remove(user)
 
         result = extract_mails(ldap_search(self.users))
-        if result is not None:
+        
+        if self.mails:
+            if result:
+                self.mails.append(result)
+        else:
             self.mails = result
 
     def send_mail(self, server):
@@ -301,8 +307,6 @@ def extract_mails(query: list) -> list:
     if query:
         for user, result in query:
             # dn = result[0]
-            print("Result: {}".format(result))
-            print("User: {}".format(user))
             if result:
                 attributes = result[0][1]
                 mails.append(attributes["mail"][0].decode("utf-8"))
