@@ -165,7 +165,7 @@ class Protocol(object):
             else:
                 print("\nEs wurden erfolgreich {} Mails verschickt.\n".format(mailcount))
         except smtplib.SMTPAuthenticationError:
-            print("Du hast die Falschen Anmeldedaten eingegeben!")
+            print("Du hast die falschen Anmeldedaten eingegeben!")
             print("Bitte versuche es noch einmal:")
             self.send_mails(username=username, tries=tries+1)
         except Exception as e:
@@ -363,7 +363,7 @@ def main():
         "--fromaddr",
         help="Set 'From:' address for the generated mail",
         action="store",
-        default="fachschaft@mathphys.stura.uni-heidelberg.de",
+        default="simo@mathphys.stura.uni-heidelberg.de",
         dest="from_address",
     )
     parser.add_argument(
