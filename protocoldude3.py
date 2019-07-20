@@ -28,56 +28,34 @@ MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
 
 # define common mail lists and aliases
-LIST_USERS = [
-    ["fachschaft", "Liebe Fachschaft"],
-    ["flachschaft", "Liebe Fachschaft"],
-    ["bernd", "Liebe Fachschaft"],
-    ["fsinformatik", "Liebe Fachschaft"],
-    ["fsphysik", "Liebe Fachschaft"],
-    ["fsmathematik", "Liebe Fachschaft"],
-    ["fsmathinf", "Liebe Fachschaft"],
-    ["infostudkom", "Liebes Mitglied der Studienkommission Informatik"],
-    ["tistudkom", "Liebes Mitglied der Studkom TI"],
-    ["mathstudkom", "Liebe MathStudKomLerInnen"],
-    ["mathestudkom", "Liebe MathStudKomLerInnen"],
-    ["physstudkom", "Liebe Mitglied der Studkom Physik"],
-    ["physikstudkom", "Liebe Mitglied der Studkom Physik"],
-    ["studkomphysik", "Liebe Mitglied der Studkom Physik"],
-    ["scstudkom", "Liebe Mitglied der Studkom SciCom"],
-    ["mathfakrat", "Liebes Mitglied des MatheInfo-Fakrats"],
-    ["fakratmathinf", "Liebes Mitglied des MatheInfo-Fakrats"],
-    ["physfakrat", "Liebes Mitglied des Physik-Fakrats"],
-    ["fakratphys", "Liebes Mitglied des Physik-Fakrats"],
-    ["fakratphysik", "Liebes Mitglied des Physik-Fakrats"],
-    ["akfest", "Liebes Mitglied der AK-Fest Liste"],
-    ["vertagt", "Liebe SiMo"],
-    ["schluesselinhaber", "Liebe/r Bewohner/in des Fachschaftsraums"],
-]
-
 mailinglists = {
-	"fachschaft": "Liebe Fachschaft",
-	"flachschaft": "Liebe Fachschaft",
-    "bernd": "Liebe Fachschaft",
-    "fsinformatik": "Liebe Fachschaft",
-    "fsphysik": "Liebe Fachschaft",
-    "fsmathematik": "Liebe Fachschaft",
-    "fsmathinf": "Liebe Fachschaft",
-    "infostudkom": "Liebes Mitglied der Studienkommission Informatik",
-    "tistudkom": "Liebes Mitglied der Studkom TI",
-    "mathstudkom": "Liebe MathStudKomLerInnen",
-    "mathestudkom": "Liebe MathStudKomLerInnen",
-    "physstudkom": "Liebe Mitglied der Studkom Physik",
-    "physikstudkom": "Liebe Mitglied der Studkom Physik",
-    "studkomphysik": "Liebe Mitglied der Studkom Physik",
-    "scstudkom": "Liebe Mitglied der Studkom SciCom",
-    "mathfakrat": "Liebes Mitglied des MatheInfo-Fakrats",
-    "fakratmathinf": "Liebes Mitglied des MatheInfo-Fakrats",
-    "physfakrat": "Liebes Mitglied des Physik-Fakrats",
-    "fakratphys": "Liebes Mitglied des Physik-Fakrats",
-    "fakratphysik": "Liebes Mitglied des Physik-Fakrats",
-    "akfest": "Liebes Mitglied der AK-Fest Liste",
-    "vertagt": "Liebe SiMo",
-    "schluesselinhaber": "Liebe/r Bewohner/in des Fachschaftsraums",
+	"fachschaft": "Liebe Fachschaft,",
+	"flachschaft": "Liebe Fachschaft,",
+    "bernd": "Liebe Fachschaft,",
+    "fsinformatik": "Liebe Fachschaft,",
+    "fsphysik": "Liebe Fachschaft,",
+    "fsmathematik": "Liebe Fachschaft,",
+    "fsmathinf": "Liebe Fachschaft,",
+    "fsr": "Liebe Fachschaftsräte,",
+    "infostudkom": "Liebes Mitglied der Studienkommission Informatik,",
+    "tistudkom": "Liebes Mitglied der Studkom TI,",
+    "mathstudkom": "Liebe MathStudKomLerInnen,",
+    "mathestudkom": "Liebe MathStudKomLerInnen,",
+    "physstudkom": "Liebe Mitglied der Studkom Physik,",
+    "physikstudkom": "Liebe Mitglied der Studkom Physik,",
+    "studkomphysik": "Liebe Mitglied der Studkom Physik,",
+    "scstudkom": "Liebe Mitglied der Studkom SciCom,",
+    "mathfakrat": "Liebes Mitglied des MatheInfo-Fakrats,",
+    "fakratmathinf": "Liebes Mitglied des MatheInfo-Fakrats,",
+    "physfakrat": "Liebes Mitglied des Physik-Fakrats,",
+    "fakratphys": "Liebes Mitglied des Physik-Fakrats,",
+    "fakratphysik": "Liebes Mitglied des Physik-Fakrats,",
+    "akfest": "Liebes Mitglied der AK-Fest Liste,",
+    "vertagt": "Liebe SiMo,",
+    "simo": "Liebe SiMo,",
+    "schluesselinhaber": "Liebe/r Bewohner/in des Fachschaftsraums,",
+    "root": "Liebe roots,",
+    "ruth": "Liebe roots,",
 }
 
 def check_path(path: str) -> bool:
@@ -276,16 +254,13 @@ class TOP(Protocol):
     def get_mails(self):
         mailinglistusers = []
         for user in self.users:
-            print(user)
-#            if any(user.lower() in account for account, greeting in LIST_USERS):
             if user.lower() in mailinglists:
                 self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
                 mailinglistusers.append(user)
-                print(user)
         [self.users.remove(user) for user in mailinglistusers]
-        
+
         result = extract_mails(ldap_search(self.users))
-        
+
         if self.mails:
             if result:
                 self.mails.append(result)
@@ -301,8 +276,8 @@ class TOP(Protocol):
             msg["To"] = mail
             msg["Subject"] = self.args.mail_subject_prefix+": "+self.title.title_text
 
-            if any(user.lower() in account for account, greeting in LIST_USERS):
-                body = [greeting for [account, greeting] in LIST_USERS if account == user.lower()][0] + ",\n\n"
+            if user.lower() in mailinglists:
+                body = mailinglists[user.lower()] + ",\n\n"
             else:
                 body = "Hallo {},\n\n".format(user)
             body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(
