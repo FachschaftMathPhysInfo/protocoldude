@@ -54,6 +54,31 @@ LIST_USERS = [
     ["schluesselinhaber", "Liebe/r Bewohner/in des Fachschaftsraums"],
 ]
 
+mailinglists = {
+	"fachschaft": "Liebe Fachschaft",
+	"flachschaft": "Liebe Fachschaft",
+    "bernd": "Liebe Fachschaft",
+    "fsinformatik": "Liebe Fachschaft",
+    "fsphysik": "Liebe Fachschaft",
+    "fsmathematik": "Liebe Fachschaft",
+    "fsmathinf": "Liebe Fachschaft",
+    "infostudkom": "Liebes Mitglied der Studienkommission Informatik",
+    "tistudkom": "Liebes Mitglied der Studkom TI",
+    "mathstudkom": "Liebe MathStudKomLerInnen",
+    "mathestudkom": "Liebe MathStudKomLerInnen",
+    "physstudkom": "Liebe Mitglied der Studkom Physik",
+    "physikstudkom": "Liebe Mitglied der Studkom Physik",
+    "studkomphysik": "Liebe Mitglied der Studkom Physik",
+    "scstudkom": "Liebe Mitglied der Studkom SciCom",
+    "mathfakrat": "Liebes Mitglied des MatheInfo-Fakrats",
+    "fakratmathinf": "Liebes Mitglied des MatheInfo-Fakrats",
+    "physfakrat": "Liebes Mitglied des Physik-Fakrats",
+    "fakratphys": "Liebes Mitglied des Physik-Fakrats",
+    "fakratphysik": "Liebes Mitglied des Physik-Fakrats",
+    "akfest": "Liebes Mitglied der AK-Fest Liste",
+    "vertagt": "Liebe SiMo",
+    "schluesselinhaber": "Liebe/r Bewohner/in des Fachschaftsraums",
+}
 
 def check_path(path: str) -> bool:
     """checks the input file name for a valid date and type .txt"""
@@ -251,9 +276,12 @@ class TOP(Protocol):
     def get_mails(self):
         mailinglistusers = []
         for user in self.users:
-            if any(user.lower() in account for account, greeting in LIST_USERS):
+            print(user)
+#            if any(user.lower() in account for account, greeting in LIST_USERS):
+            if user.lower() in mailinglists:
                 self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
                 mailinglistusers.append(user)
+                print(user)
         [self.users.remove(user) for user in mailinglistusers]
         
         result = extract_mails(ldap_search(self.users))
