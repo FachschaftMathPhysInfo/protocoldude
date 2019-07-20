@@ -249,11 +249,13 @@ class TOP(Protocol):
         self.users = list(set(users))  # remove duplicates
 
     def get_mails(self):
+        mailinglistusers = []
         for user in self.users:
-            if user in LIST_USERS[:][0]:
+            if any(user.lower() in account for account, greeting in LIST_USERS):
                 self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
-                self.users.remove(user)
-
+                mailinglistusers.append(user)
+        [self.users.remove(user) for user in mailinglistusers]
+        
         result = extract_mails(ldap_search(self.users))
         
         if self.mails:
@@ -271,8 +273,8 @@ class TOP(Protocol):
             msg["To"] = mail
             msg["Subject"] = self.args.mail_subject_prefix+": "+self.title.title_text
 
-            if user in LIST_USERS[:][0]:
-                body = LIST_USERS[LIST_USERS[:][0].index(user)][1] + ",\n\n"
+            if any(user.lower() in account for account, greeting in LIST_USERS):
+                body = [greeting for [account, greeting] in LIST_USERS if account == user.lower()][0] + ",\n\n"
             else:
                 body = "Hallo {},\n\n".format(user)
             body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(
