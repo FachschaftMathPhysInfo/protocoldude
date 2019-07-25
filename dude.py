@@ -74,8 +74,10 @@ class Protocol(object):
         self.mails_sent = False
         self.check_path()
 
-    def check_path() -> bool:
-        """checks the input file name for a valid date and type .txt"""
+    def check_path(self) -> bool:
+        """
+        Checks the input file name for a valid date and type .txt
+        """
         # year = path[0:4].isnumeric()
         # month = path[5:7].isnumeric()
         # date = path[8:9].isnumeric()
@@ -87,30 +89,28 @@ class Protocol(object):
         #     )
         # return True
 
-        print("Check_path function")
-        
         filename_match = re.match("^20\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]).txt{1}$", self.path)
         path_exist = os.path.isfile(self.path)
 
         if not path_exist:
-            raise Exception(
-                "Der Dateipfad führt nicht zu einem Sitzungsprotokoll!"
-            )
+            raise Exception("Der Dateipfad führt nicht zu einem Sitzungsprotokoll!")
 
         while not filename_match:
-            raise Exception(
-                "Der Dateipfad solltest du in das Datum der Sitzung ändern!"
-            )
             print(self.path)
-            os.rename(self.path, 'b.kml')
+            print("Der Dateipfad solltest du in das Datum der Sitzung ändern! Das sollte dann so aussehen: yyyy-mm-dd.txt")
+            new_path = input("Bitte gib den korrekten Dateinamen an: ")
+
+            filename_match = re.match("^20\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]).txt{1}$", new_path)
+            os.rename(self.path, new_path)
+            print(new_path)
+            self.path = new_path
         return True
 
 
     def download_protocol(self, url, save_path=""):
-        """Downloads a protocol
-
+        """
+        Downloads a protocol
         URL: The URL to download the Protocol from
-
         """
         export_suffix = ""
         if "pad" in url:
@@ -272,6 +272,7 @@ class TOP(Protocol):
         for user in self.users:
             if user in LIST_USERS[:][0]:
                 self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
+        print(self.mails)
 
     def send_mail(self, server):
         for user, mail in zip(self.users, self.mails):
