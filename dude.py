@@ -16,6 +16,7 @@ import getpass
 import tempfile
 import urllib.request
 import sys
+import os
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -52,21 +53,6 @@ LIST_USERS = [
     ["akfest", "Liebes Mitglied der AK-Fest Liste"],
 ]
 
-
-def check_path(path: str) -> bool:
-    """checks the input file name for a valid date and type .txt"""
-    year = path[0:4].isnumeric()
-    month = path[5:7].isnumeric()
-    date = path[8:9].isnumeric()
-    name = year and month and date and path[4] is "-" and path[7] is "-"
-
-    if not path.endswith(".txt"):
-        raise Exception(
-            "Der Dateipfad führt nicht zu einem Sitzungsprotokoll oder du schaust besser nochmal über den Filenamen!"
-        )
-    return True
-
-
 class Protocol(object):
     """reads in the protocol and processes it"""
 
@@ -86,7 +72,39 @@ class Protocol(object):
                 self.protocol = file.read().splitlines()
         self.tops = []
         self.mails_sent = False
-        check_path(path=self.path)
+        self.check_path()
+
+    def check_path() -> bool:
+        """checks the input file name for a valid date and type .txt"""
+        # year = path[0:4].isnumeric()
+        # month = path[5:7].isnumeric()
+        # date = path[8:9].isnumeric()
+        # name = year and month and date and path[4] is "-" and path[7] is "-"
+        #
+        # if not path.endswith(".txt"):
+        #     raise Exception(
+        #         "Der Dateipfad führt nicht zu einem Sitzungsprotokoll oder du schaust besser nochmal über den Filenamen!"
+        #     )
+        # return True
+
+        print("Check_path function")
+        
+        filename_match = re.match("^20\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]).txt{1}$", self.path)
+        path_exist = os.path.isfile(self.path)
+
+        if not path_exist:
+            raise Exception(
+                "Der Dateipfad führt nicht zu einem Sitzungsprotokoll!"
+            )
+
+        while not filename_match:
+            raise Exception(
+                "Der Dateipfad solltest du in das Datum der Sitzung ändern!"
+            )
+            print(self.path)
+            os.rename(self.path, 'b.kml')
+        return True
+
 
     def download_protocol(self, url, save_path=""):
         """Downloads a protocol
