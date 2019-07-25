@@ -1,5 +1,5 @@
 # Requirements
-In order to run `dude.py` you need to install a few python modules.
+In order to run `protocoldude3.py` you need to install a few python modules.
 
 The needed modules are listen in the file `requirements.txt`, you can therefore install them using `pip`.
 ```
@@ -15,9 +15,10 @@ $ pip3 install --user -r requirements.txt
 # Running the program
 
 ```bash
-$ ./dude.py _protcol.txt_
+$ ./protocoldude3.py <filename>
 ```
 The name of the protocol is expected to have the format `yyyy-mm-dd.txt`.
+You can get more informations by invoking the program with the `-h` flag or without any arguments.
 
 ## parsed sequences
 
@@ -27,7 +28,7 @@ It is possible to seperate agenda items like this:
 
 ```
 ===
-Item 1: Usage of the protocoldude
+TOP 1: Usage of the protocoldude
 ===
 ```
 
@@ -35,7 +36,7 @@ They will then be prepended with the sufficent amount of '`=`' to look like this
 
 ```
 =================================
-Item 1: Usage of the protocoldude
+TOP 1: Usage of the protocoldude
 =================================
 ```
 
