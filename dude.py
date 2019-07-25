@@ -23,7 +23,7 @@ from email.mime.text import MIMEText
 
 import ldap
 
-__version__ = "v1.0.0"
+__version__ = "v1.0.1"
 
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
@@ -51,6 +51,8 @@ LIST_USERS = [
     ["fakratphys", "Liebes Mitglied des Physik-Fakrats"],
     ["fakratphysik", "Liebes Mitglied des Physik-Fakrats"],
     ["akfest", "Liebes Mitglied der AK-Fest Liste"],
+    ["vertagt", "Liebe SiMo"],
+    ["schluesselinhaber", "Liebe/r Bewohner/in des Fachschaftsraums"],
 ]
 
 class Protocol(object):
@@ -183,7 +185,7 @@ class Protocol(object):
             else:
                 print("\nEs wurden erfolgreich {} Mails verschickt.\n".format(mailcount))
         except smtplib.SMTPAuthenticationError:
-            print("Du hast die Falschen Anmeldedaten eingegeben!")
+            print("Du hast die falschen Anmeldedaten eingegeben!")
             print("Bitte versuche es noch einmal:")
             self.send_mails(username=username, tries=tries+1)
         except Exception as e:
@@ -265,12 +267,9 @@ class TOP(Protocol):
         self.users = list(set(users))  # remove duplicates
 
     def get_mails(self):
-        result = extract_mails(ldap_search(self.users))
-        if result is not None:
-            self.mails = result
-
+        mailinglistusers = []
         for user in self.users:
-            if user in LIST_USERS[:][0]:
+            if any(user.lower() in account for account, greeting in LIST_USERS):
                 self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
         print(self.mails)
 
@@ -283,8 +282,8 @@ class TOP(Protocol):
             msg["To"] = mail
             msg["Subject"] = self.args.mail_subject_prefix+": "+self.title.title_text
 
-            if user in LIST_USERS[:][0]:
-                body = LIST_USERS[LIST_USERS[:][0].index(user)][1] + ",\n\n"
+            if any(user.lower() in account for account, greeting in LIST_USERS):
+                body = [greeting for [account, greeting] in LIST_USERS if account == user.lower()][0] + ",\n\n"
             else:
                 body = "Hallo {},\n\n".format(user)
             body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(
@@ -319,11 +318,10 @@ def extract_mails(query: list) -> list:
     if query:
         for user, result in query:
             # dn = result[0]
-            if not result:
-                # TODO: Implement select of alternatives
-                pass
-            attributes = result[0][1]
-            mails.append(attributes["mail"][0].decode("utf-8"))
+            if result:
+                attributes = result[0][1]
+                mails.append(attributes["mail"][0].decode("utf-8"))
+            # TODO: Implement select of alternatives
     return mails
 
 
@@ -356,7 +354,7 @@ class TOP_Title:
 
 def main():
     # comment to disables error messages
-    sys.tracebacklimit = 0
+    # sys.tracebacklimit = 0
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -380,7 +378,7 @@ def main():
         "--fromaddr",
         help="Set 'From:' address for the generated mail",
         action="store",
-        default="fachschaft@mathphys.stura.uni-heidelberg.de",
+        default="simo@mathphys.stura.uni-heidelberg.de",
         dest="from_address",
     )
     parser.add_argument(
