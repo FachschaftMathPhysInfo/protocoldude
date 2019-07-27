@@ -271,7 +271,17 @@ class TOP(Protocol):
         for user in self.users:
             if any(user.lower() in account for account, greeting in LIST_USERS):
                 self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
-        print(self.mails)
+                mailinglistusers.append(user)
+        [self.users.remove(user) for user in mailinglistusers]
+
+        result = extract_mails(ldap_search(self.users))
+
+        if self.mails:
+            if result:
+                self.mails.append(result)
+        else:
+            self.mails = result
+
 
     def send_mail(self, server):
         for user, mail in zip(self.users, self.mails):
