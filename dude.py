@@ -52,6 +52,7 @@ LIST_USERS = [
     ["akfest", "Liebes Mitglied der AK-Fest Liste"],
     ["vertagt", "Liebe SiMo"],
     ["schluesselinhaber", "Liebe/r Bewohner/in des Fachschaftsraums"],
+    ["finanzen", "Sehr geehrte Menschen mit Ahnung von Geld"],
 ]
 
 
