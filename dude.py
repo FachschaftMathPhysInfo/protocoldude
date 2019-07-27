@@ -53,6 +53,8 @@ LIST_USERS = [
     ["akfest", "Liebes Mitglied der AK-Fest Liste"],
     ["vertagt", "Liebe SiMo"],
     ["schluesselinhaber", "Liebe/r Bewohner/in des Fachschaftsraums"],
+    ["finanzen", "Sehr geehrte Menschen mit Ahnung vom Großen Geld"],
+
 ]
 
 class Protocol(object):
@@ -98,13 +100,11 @@ class Protocol(object):
             raise Exception("Der Dateipfad führt nicht zu einem Sitzungsprotokoll!")
 
         while not filename_match:
-            print(self.path)
-            print("Der Dateipfad solltest du in das Datum der Sitzung ändern! Das sollte dann so aussehen: yyyy-mm-dd.txt")
+            print("Den Dateipfad {} solltest du in das Datum der Sitzung ändern! Das sollte dann so aussehen: yyyy-mm-dd.txt".format(self.path))
             new_path = input("Bitte gib den korrekten Dateinamen an: ")
 
             filename_match = re.match("^20\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]).txt{1}$", new_path)
             os.rename(self.path, new_path)
-            print(new_path)
             self.path = new_path
         return True
 
@@ -184,6 +184,10 @@ class Protocol(object):
                 print("\nEs wurde erfolgreich eine Mail versendet!\n")
             else:
                 print("\nEs wurden erfolgreich {} Mails verschickt.\n".format(mailcount))
+            if self.users:
+                print("An folgende Nutzer konnte aus unerklärlichen Gründen keine Mail versandt werden:")
+                for user in self.users:
+                    print("    - {}".format(user))
         except smtplib.SMTPAuthenticationError:
             print("Du hast die falschen Anmeldedaten eingegeben!")
             print("Bitte versuche es noch einmal:")
@@ -246,6 +250,7 @@ class TOP(Protocol):
         self.mails = []
         self.protocol = protocol
         self.title = TOP_Title(start, start+3, self.protocol[start+1])
+        self.send = 0
 
     def __str__(self):
         return "\n".join(self.protocol[self.start:self.end])
@@ -283,7 +288,7 @@ class TOP(Protocol):
             self.mails = result
 
 
-    def send_mail(self, server):
+    def send_mail(self, server) -> int:
         for user, mail in zip(self.users, self.mails):
             from_addr = self.args.from_address
 
@@ -304,8 +309,11 @@ class TOP(Protocol):
             msg.attach(MIMEText(body, "plain"))
 
             text = msg.as_string()
-            server.sendmail(from_addr, mail, text)
-        return len(self.mails)
+#            server.sendmail(from_addr, mail, text)
+            self.send +=1
+            self.users.remove(user)
+            self.mails.remove(mail)
+        return len(self.send)
 
 
 def ldap_search(users: list) -> list:
