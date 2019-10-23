@@ -423,6 +423,10 @@ def main():
         version=__version__,
     )
 
+    if len(sys.argv)==1: # print help message if no arguments were given
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
     args = parser.parse_args()
 
     protocol = Protocol(args)
