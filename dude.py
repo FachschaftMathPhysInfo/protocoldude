@@ -371,9 +371,11 @@ def main():
     # comment to disables error messages
     # sys.tracebacklimit = 0
 
-    parser = argparse.ArgumentParser(description=\
-        """Der Protocoldude macht automagisch aus deinem schnell zusammen geschriebenen inoffiziellen Protokoll eine ansehnliche Version.
+    parser = argparse.ArgumentParser(description='''
+        Der Protocoldude macht automagisch aus deinem schnell zusammen geschriebenen inoffiziellen Protokoll eine ansehnliche Version.
         Außerdem werden auf seltsame Weise Erinnerungs-Maills versandt.
+        Gib dazu folgenden Befehl im Zielordner mit vorhandenem Protokoll ein:
+            $ python3 protocoldude.py yyyy-mm-dd.txt
         Damit der ganze Spaß funktioniert, solltest du aber trotzdem ein paar Formalia beachten. Dazu gehören:
         - Überschriften erfüllen die Form:
                 ===
@@ -382,7 +384,7 @@ def main():
         - Zu benachrichtigende Personen werden erwähnt:
                 ${<intern>}
                 ${<external@some.com>}
-        """,
+        ''',
         epilog="Wer schlau ist, liest zwischen den Zeilen (oder im Code).")
     parser.add_argument(
         "infile",
@@ -422,6 +424,10 @@ def main():
         action="version",
         version=__version__,
     )
+
+    if len(sys.argv)==1: # print help message if no arguments were given
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
     args = parser.parse_args()
 
