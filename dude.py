@@ -53,8 +53,7 @@ LIST_USERS = [
     ["akfest", "Liebes Mitglied der AK-Fest Liste"],
     ["vertagt", "Liebe SiMo"],
     ["schluesselinhaber", "Liebe/r Bewohner/in des Fachschaftsraums"],
-    ["finanzen", "Sehr geehrte Menschen mit Ahnung vom Großen Geld"],
-
+    ["finanzen", "Sehr geehrte Menschen mit Ahnung der vielen Goldbarren"],
 ]
 
 class Protocol(object):
@@ -274,12 +273,11 @@ class TOP(Protocol):
     def get_mails(self):
         mailinglistusers = []
         for user in self.users:
-            if any(user.lower() in account for account, greeting in LIST_USERS):
-                self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
-                mailinglistusers.append(user)
-        [self.users.remove(user) for user in mailinglistusers]
+            if any(user.lower() in account for account, greeting in LIST_USERS): # if user in List_user
+                self.mails.append(user + "@mathphys.stura.uni-heidelberg.de") # append valid mail to "mails"
+                self.users.remove(user) # and remove from "user"
 
-        result = extract_mails(ldap_search(self.users))
+        result = extract_mails(ldap_search(self.users)) # search remaining users in LDAP
 
         if self.mails:
             if result:
@@ -313,6 +311,7 @@ class TOP(Protocol):
             self.send +=1
             self.users.remove(user)
             self.mails.remove(mail)
+            print('Mail an "{}" zu TOP:"{}" gesendet.'.format())
         return len(self.send)
 
 
