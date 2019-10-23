@@ -21,7 +21,7 @@ from email.mime.text import MIMEText
 
 import ldap
 
-__version__ = "v1.0.1"
+__version__ = "v3.0.2"
 
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
@@ -73,7 +73,6 @@ class Protocol(object):
                 self.protocol = file.read().splitlines()
         self.tops = []
         self.mails_sent = False
-        self.check_path()
 
     def check_path(self) -> bool:
         """
@@ -91,10 +90,9 @@ class Protocol(object):
         # return True
 
         filename_match = re.match("^20\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]).txt{1}$", self.path)
-        path_exist = os.path.isfile(self.path)
 
-        if not path_exist:
-            raise Exception("Der Dateipfad führt nicht zu einem Sitzungsprotokoll!")
+        if not os.path.isfile(self.path):
+            raise FileNotFoundError("Der Dateipfad führt nicht zu einem Sitzungsprotokoll!")
 
         while not filename_match:
             print("Den Dateipfad {} solltest du in das Datum der Sitzung ändern! Das sollte dann so aussehen: yyyy-mm-dd.txt".format(self.path))
@@ -316,6 +314,7 @@ class TOP(Protocol):
 def ldap_search(users: list) -> list:
     """ searches for a list of users in our ldap """
     server = ldap.initialize("ldaps://" + MATHPHYS_LDAP_ADDRESS)
+    users_old = users
     users = [(user, "(uid={})".format(user)) for user in users]
     users = [(
         user, server.search_s(
@@ -324,6 +323,21 @@ def ldap_search(users: list) -> list:
             query
         )
     ) for user, query in users]
+    # Remove all users without query results
+    users = [user for user in users if user[1]]
+    if len(users) < len(users_old):
+        non_found = [
+            old_user for old_user in users_old if old_user not in
+            [user[0] for user in users]
+        ]
+        if len(non_found) == 1:
+            raise RuntimeError(
+                f"The following user could not be found in the LDAP: \"{non_found[0]}\""
+            )
+        userstring = "\"" + "\", \"".join(non_found) + "\""
+        raise RuntimeError(
+            f"The following user could not be found in the LDAP: {userstring}"
+        )
     return users
 
 
@@ -398,6 +412,12 @@ def main():
         dest="disable_svn",
     )
     parser.add_argument(
+        "--disable-path-checking",
+        help="Disables the function to detect a non-correct path",
+        action="store_true",
+        dest="disable_path_check",
+    )
+    parser.add_argument(
         "--disable-mail",
         help="disable the sending of mails",
         action="store_true",
@@ -432,6 +452,8 @@ def main():
     args = parser.parse_args()
 
     protocol = Protocol(args)
+    if not args.disable_path_check:
+        protocol.check_path()
     protocol.get_tops()
     protocol.get_users()
     protocol.rename_title()
