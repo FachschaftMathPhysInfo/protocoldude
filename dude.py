@@ -4,8 +4,6 @@
 # possible input mail adresses:
 #     ${internal}          => internal@mathphys.stura.uni-heidelberg.de
 #     ${external@some.com} => external@some.com
-#     ${external@some.com Some Name} => external@some.com
-#     ${Some Name external@some.com} => external@some.com
 
 import argparse
 import datetime
@@ -373,7 +371,19 @@ def main():
     # comment to disables error messages
     # sys.tracebacklimit = 0
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=\
+        """Der Protocoldude macht automagisch aus deinem schnell zusammen geschriebenen inoffiziellen Protokoll eine ansehnliche Version.
+        Außerdem werden auf seltsame Weise Erinnerungs-Maills versandt.
+        Damit der ganze Spaß funktioniert, solltest du aber trotzdem ein paar Formalia beachten. Dazu gehören:
+        - Überschriften erfüllen die Form:
+                ===
+                TOP: <name>
+                ===
+        - Zu benachrichtigende Personen werden erwähnt:
+                ${<intern>}
+                ${<external@some.com>}
+        """,
+        epilog="Wer schlau ist, liest zwischen den Zeilen (oder im Code).")
     parser.add_argument(
         "infile",
         metavar="<file>",
