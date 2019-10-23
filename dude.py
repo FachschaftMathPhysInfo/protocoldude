@@ -16,6 +16,7 @@ import getpass
 import tempfile
 import urllib.request
 import sys
+import os
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -52,23 +53,8 @@ LIST_USERS = [
     ["akfest", "Liebes Mitglied der AK-Fest Liste"],
     ["vertagt", "Liebe SiMo"],
     ["schluesselinhaber", "Liebe/r Bewohner/in des Fachschaftsraums"],
-    ["finanzen", "Sehr geehrte Menschen mit Ahnung von Geld"],
+    ["finanzen", "Sehr geehrte Menschen mit Ahnung der vielen Goldbarren"],
 ]
-
-
-def check_path(path: str) -> bool:
-    """checks the input file name for a valid date and type .txt"""
-    year = path[0:4].isnumeric()
-    month = path[5:7].isnumeric()
-    date = path[8:9].isnumeric()
-    name = year and month and date and path[4] is "-" and path[7] is "-"
-
-    if not path.endswith(".txt"):
-        raise Exception(
-            "Der Dateipfad führt nicht zu einem Sitzungsprotokoll oder du schaust besser nochmal über den Filenamen!"
-        )
-    return True
-
 
 class Protocol(object):
     """reads in the protocol and processes it"""
@@ -89,13 +75,43 @@ class Protocol(object):
                 self.protocol = file.read().splitlines()
         self.tops = []
         self.mails_sent = False
-        check_path(path=self.path)
+        self.check_path()
+
+    def check_path(self) -> bool:
+        """
+        Checks the input file name for a valid date and type .txt
+        """
+        # year = path[0:4].isnumeric()
+        # month = path[5:7].isnumeric()
+        # date = path[8:9].isnumeric()
+        # name = year and month and date and path[4] is "-" and path[7] is "-"
+        #
+        # if not path.endswith(".txt"):
+        #     raise Exception(
+        #         "Der Dateipfad führt nicht zu einem Sitzungsprotokoll oder du schaust besser nochmal über den Filenamen!"
+        #     )
+        # return True
+
+        filename_match = re.match("^20\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]).txt{1}$", self.path)
+        path_exist = os.path.isfile(self.path)
+
+        if not path_exist:
+            raise Exception("Der Dateipfad führt nicht zu einem Sitzungsprotokoll!")
+
+        while not filename_match:
+            print("Den Dateipfad {} solltest du in das Datum der Sitzung ändern! Das sollte dann so aussehen: yyyy-mm-dd.txt".format(self.path))
+            new_path = input("Bitte gib den korrekten Dateinamen an: ")
+
+            filename_match = re.match("^20\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]).txt{1}$", new_path)
+            os.rename(self.path, new_path)
+            self.path = new_path
+        return True
+
 
     def download_protocol(self, url, save_path=""):
-        """Downloads a protocol
-
+        """
+        Downloads a protocol
         URL: The URL to download the Protocol from
-
         """
         export_suffix = ""
         if "pad" in url:
@@ -167,6 +183,10 @@ class Protocol(object):
                 print("\nEs wurde erfolgreich eine Mail versendet!\n")
             else:
                 print("\nEs wurden erfolgreich {} Mails verschickt.\n".format(mailcount))
+            if self.users:
+                print("An folgende Nutzer konnte aus unerklärlichen Gründen keine Mail versandt werden:")
+                for user in self.users:
+                    print("    - {}".format(user))
         except smtplib.SMTPAuthenticationError:
             print("Du hast die falschen Anmeldedaten eingegeben!")
             print("Bitte versuche es noch einmal:")
@@ -229,6 +249,7 @@ class TOP(Protocol):
         self.mails = []
         self.protocol = protocol
         self.title = TOP_Title(start, start+3, self.protocol[start+1])
+        self.send = 0
 
     def __str__(self):
         return "\n".join(self.protocol[self.start:self.end])
@@ -252,20 +273,20 @@ class TOP(Protocol):
     def get_mails(self):
         mailinglistusers = []
         for user in self.users:
-            if any(user.lower() in account for account, greeting in LIST_USERS):
-                self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
-                mailinglistusers.append(user)
-        [self.users.remove(user) for user in mailinglistusers]
-        
-        result = extract_mails(ldap_search(self.users))
-        
+            if any(user.lower() in account for account, greeting in LIST_USERS): # if user in List_user
+                self.mails.append(user + "@mathphys.stura.uni-heidelberg.de") # append valid mail to "mails"
+                self.users.remove(user) # and remove from "user"
+
+        result = extract_mails(ldap_search(self.users)) # search remaining users in LDAP
+
         if self.mails:
             if result:
                 self.mails.append(result)
         else:
             self.mails = result
 
-    def send_mail(self, server):
+
+    def send_mail(self, server) -> int:
         for user, mail in zip(self.users, self.mails):
             from_addr = self.args.from_address
 
@@ -286,8 +307,12 @@ class TOP(Protocol):
             msg.attach(MIMEText(body, "plain"))
 
             text = msg.as_string()
-            server.sendmail(from_addr, mail, text)
-        return len(self.mails)
+#            server.sendmail(from_addr, mail, text)
+            self.send +=1
+            self.users.remove(user)
+            self.mails.remove(mail)
+            print('Mail an "{}" zu TOP:"{}" gesendet.'.format())
+        return len(self.send)
 
 
 def ldap_search(users: list) -> list:
