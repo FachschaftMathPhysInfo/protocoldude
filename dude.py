@@ -51,7 +51,7 @@ LIST_USERS = [
     ["akfest", "Liebes Mitglied der AK-Fest Liste"],
     ["vertagt", "Liebe SiMo"],
     ["schluesselinhaber", "Liebe/r Bewohner/in des Fachschaftsraums"],
-    ["finanzen", "Sehr geehrte Menschen mit Ahnung der vielen Goldbarren"],
+    ["finanzen", "Sehr geehrte Menschen mit Ahnung der vielen Goldbarren"]
 ]
 
 class Protocol(object):
@@ -73,6 +73,7 @@ class Protocol(object):
                 self.protocol = file.read().splitlines()
         self.tops = []
         self.mails_sent = False
+        self.unknown = []
 
     def check_path(self) -> bool:
         """
@@ -157,7 +158,7 @@ class Protocol(object):
     def get_users(self):
         for top in self.tops:
             top.get_user()
-            top.get_mails()
+            self.unknown = top.get_mails()
 
     def send_mails(self, username="", tries=0):
         try:
@@ -179,9 +180,9 @@ class Protocol(object):
                 print("\nEs wurde erfolgreich eine Mail versendet!\n")
             else:
                 print("\nEs wurden erfolgreich {} Mails verschickt.\n".format(mailcount))
-            if self.users:
+            if self.unknown:
                 print("An folgende Nutzer konnte aus unerklärlichen Gründen keine Mail versandt werden:")
-                for user in self.users:
+                for user in self.unknown:
                     print("    - {}".format(user))
         except smtplib.SMTPAuthenticationError:
             print("Du hast die falschen Anmeldedaten eingegeben!")
@@ -242,6 +243,7 @@ class TOP(Protocol):
         self.start = start
         self.end = end
         self.users = []
+        self.unknown = []
         self.mails = []
         self.protocol = protocol
         self.title = TOP_Title(start, start+3, self.protocol[start+1])
@@ -266,52 +268,58 @@ class TOP(Protocol):
             users += adress
         self.users = list(set(users))  # remove duplicates
 
+
     def get_mails(self):
         mailinglistusers = []
         for user in self.users:
-            if any(user.lower() in account for account, greeting in LIST_USERS): # if user in List_user
-                self.mails.append(user + "@mathphys.stura.uni-heidelberg.de") # append valid mail to "mails"
-                self.users.remove(user) # and remove from "user"
+            # if user in List_user append valid mail to "mails" else add user to not found
+            if any(user.lower() in account for account, greeting in LIST_USERS):
+                self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
+            else:
+                result = extract_mails(ldap_search(self.users, self.unknown)) # search remaining users in LDAP
+                print("Result: {}".format(result))
+                if self.mails:
+                    if result:
+                        self.mails += result
+                    else:
+                        self.unknown.append(result)
+                else:
+                    self.mails = result
 
-        result = extract_mails(ldap_search(self.users)) # search remaining users in LDAP
-
-        if self.mails:
-            if result:
-                self.mails.append(result)
-        else:
-            self.mails = result
-
+        return self.unknown
 
     def send_mail(self, server) -> int:
+
+        print(self.title)
+        print(self.users)
+        print(self.mails)
         for user, mail in zip(self.users, self.mails):
             from_addr = self.args.from_address
 
             msg = MIMEMultipart()
             msg["From"] = from_addr
             msg["To"] = mail
-            msg["Subject"] = self.args.mail_subject_prefix+": "+self.title.title_text
+            msg["Subject"] = self.args.mail_subject_prefix + ": " + self.title.title_text
 
             if any(user.lower() in account for account, greeting in LIST_USERS):
                 body = [greeting for [account, greeting] in LIST_USERS if account == user.lower()][0] + ",\n\n"
             else:
                 body = "Hallo {},\n\n".format(user)
-            body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(
-                self.__str__() + "\n"
-            )
+            body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(self.__str__())
             # \n\nSollte der Text abgeschnitten sein, schaue bitte im Sitzungsprotokoll nach (Zeile #{tops[i]} – MathPhys Login notwendig).\n#{url}/#{file}\" | mail -a \"Reply-To: #{$replyto}\" -a \"Content-Type: text/plain; charset=UTF-8\" -s \"#{$subject}: #{title} (#{date})\" '#{mail}';", false) unless $debug
 
             msg.attach(MIMEText(body, "plain"))
-
             text = msg.as_string()
 #            server.sendmail(from_addr, mail, text)
             self.send +=1
             self.users.remove(user)
             self.mails.remove(mail)
-            print('Mail an "{}" zu TOP:"{}" gesendet.'.format())
-        return len(self.send)
+            print(user)
+            print('Mail an "{}" zu {} gesendet.'.format(user, self.title.title_text))
+        return self.send
 
 
-def ldap_search(users: list) -> list:
+def ldap_search(users: list, unknown: list) -> list:
     """ searches for a list of users in our ldap """
     server = ldap.initialize("ldaps://" + MATHPHYS_LDAP_ADDRESS)
     users_old = users
@@ -330,14 +338,15 @@ def ldap_search(users: list) -> list:
             old_user for old_user in users_old if old_user not in
             [user[0] for user in users]
         ]
-        if len(non_found) == 1:
-            raise RuntimeError(
-                f"The following user could not be found in the LDAP: \"{non_found[0]}\""
-            )
+        if len(non_found) >= 1:
+            print(f"Folgender Benutzer kann nicht im LDAP gefunden werden: \"{non_found[0]}\"")
+#            raise RuntimeError(
+#                f"The following user could not be found in the LDAP: \"{non_found[0]}\""
+#            )
         userstring = "\"" + "\", \"".join(non_found) + "\""
-        raise RuntimeError(
-            f"The following user could not be found in the LDAP: {userstring}"
-        )
+#        raise RuntimeError(
+#            f"The following user could not be found in the LDAP: {userstring}"
+#        )
     return users
 
 
