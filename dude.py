@@ -331,6 +331,7 @@ def ldap_search(users: list, unknown: list) -> list:
             query
         )
     ) for user, query in users]
+
     # Remove all users without query results
     users = [user for user in users if user[1]]
     if len(users) < len(users_old):
@@ -339,16 +340,17 @@ def ldap_search(users: list, unknown: list) -> list:
             [user[0] for user in users]
         ]
         if len(non_found) >= 1:
-            print(f"Folgender Benutzer kann nicht im LDAP gefunden werden: \"{non_found[0]}\"")
-#            raise RuntimeError(
-#                f"The following user could not be found in the LDAP: \"{non_found[0]}\""
-#            )
+            print(f"The following user could not be found in the LDAP: \"{non_found[0]}\"")
+            raise RuntimeError(
+               f"The following user could not be found in the LDAP: \"{non_found[0]}\""
+            )
         userstring = "\"" + "\", \"".join(non_found) + "\""
-#        raise RuntimeError(
-#            f"The following user could not be found in the LDAP: {userstring}"
-#        )
+        raise RuntimeError(
+            f"The following user could not be found in the LDAP: {userstring}"
+        )
+    print("LDAP: ")
+    print(users)
     return users
-
 
 def extract_mails(query: list) -> list:
     """ extract mails from nonempty ldap queries """
@@ -412,36 +414,36 @@ def main():
     parser.add_argument(
         "infile",
         metavar="<file>",
-        help="Path to the protcol. Expects filename to have have the following format: 'yyyy-mm-dd.txt'",
+        help="Pfad zum Protokoll. Die angegebene Datei muss folgende Benennung haben: 'yyyy-mm-dd.txt'",
     )
     parser.add_argument(
         "--disable-svn",
-        help="disable the svn interaction",
+        help="Schaltet die SVN Interaktion ab.",
         action="store_true",
         dest="disable_svn",
     )
     parser.add_argument(
         "--disable-path-checking",
-        help="Disables the function to detect a non-correct path",
+        help="Verhindert eine Überprüfung des angegebenen Dateinamens.",
         action="store_true",
         dest="disable_path_check",
     )
     parser.add_argument(
         "--disable-mail",
-        help="disable the sending of mails",
+        help="Unterdrückt das Senden von Mails.",
         action="store_true",
         dest="disable_mail",
     )
     parser.add_argument(
         "--fromaddr",
-        help="Set 'From:' address for the generated mail",
+        help="Setze den Absender für die zu erstellenden Mails.",
         action="store",
         default="simo@mathphys.stura.uni-heidelberg.de",
         dest="from_address",
     )
     parser.add_argument(
         "--mail-subject",
-        help="Set the subject for the generated mail",
+        help="Ändere den Betreff für die zu erstellenden Mails.",
         action="store",
         default="Gemeinsame Sitzung",
         dest="mail_subject_prefix",
@@ -449,7 +451,7 @@ def main():
     parser.add_argument(
         "-v",
         "--version",
-        help="Print the version and exit.",
+        help="Gib die Version an ohne das Programm auszuführen.",
         action="version",
         version=__version__,
     )
@@ -477,4 +479,4 @@ def main():
         print("Nichts ins SVN commited!")
 
 if __name__ == "__main__":
-    main()
+        main()
