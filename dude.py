@@ -271,23 +271,40 @@ class TOP(Protocol):
             users += adress
         self.users = list(set(users))  # remove duplicates
 
-
     def get_mails(self):
         mailinglistusers = []
-        for user in self.users:
+        print(self.title)
+
+        for k, user in enumerate(self.users):
             # if user in List_user append valid mail to "mails" else add user to not found
-            if any(user.lower() in account for account, greeting in LIST_USERS):
-                self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
-            else:
-                result = extract_mails(ldap_search(self.users, self.unknown)) # search remaining users in LDAP
-                print("Result: {}".format(result))
-                if self.mails:
-                    if result:
-                        self.mails += result
-                    else:
-                        self.unknown.append(result)
+            result = extract_mails(ldap_search([user], self.unknown)) # search remaining users in LDAP
+            if result:
+                self.mails.append(result)
+            else: 
+                if any(user.lower() in account for account, greeting in LIST_USERS):
+                    self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
                 else:
-                    self.mails = result
+                    new_name = user
+                    while not result and new_name !='q': # loop until correct user or stopping condition entered
+                        print('\n"{}" ist kein Nutzer und keine bekannte Mailing-Liste.'.format(new_name))
+                        new_name = input("Bitte gib den korrektren Mailempfanger ein: ")
+                        result = extract_mails(ldap_search([new_name], self.unknown)) # search remaining users in LDAP
+                        if not result and any(new_name.lower() in account for account, greeting in LIST_USERS):
+                            result = new_name + "@mathphys.stura.uni-heidelberg.de"
+                    if result:
+                        self.mails.append(result)
+                    else:
+                        self.mails.append([])
+
+            print("User: {} - result: {}\n".format(user, self.mails[k]))
+#        else:
+#           if self.mails:
+#                if result:
+#                    self.mails += result
+#                else:
+#                    self.unknown.append(result)
+#            else:
+#                self.mails = result
 
         return self.unknown
 
@@ -337,22 +354,16 @@ def ldap_search(users: list, unknown: list) -> list:
 
     # Remove all users without query results
     users = [user for user in users if user[1]]
+#    print("Users: {}".format(users))
+#    print("Old users: {}".format(users_old))
+    non_found = [
+        old_user for old_user in users_old if old_user not in
+        [user[0] for user in users]
+    ]
     if len(users) < len(users_old):
-        non_found = [
-            old_user for old_user in users_old if old_user not in
-            [user[0] for user in users]
-        ]
-        if len(non_found) >= 1:
-            print(f"The following user could not be found in the LDAP: \"{non_found[0]}\"")
-            raise RuntimeError(
-               f"The following user could not be found in the LDAP: \"{non_found[0]}\""
-            )
         userstring = "\"" + "\", \"".join(non_found) + "\""
-        raise RuntimeError(
-            f"The following user could not be found in the LDAP: {userstring}"
-        )
-    print("LDAP: ")
-    print(users)
+        print(f"\nThe following user could not be found in the LDAP: {userstring}")
+
     return users
 
 def extract_mails(query: list) -> list:
@@ -471,6 +482,7 @@ def main():
     protocol.get_tops()
     protocol.get_users()
     protocol.rename_title()
+    protocol.create_tex()
     if not args.disable_mail:
         protocol.send_mails()
     else:
