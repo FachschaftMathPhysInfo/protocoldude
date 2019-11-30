@@ -231,6 +231,9 @@ class Protocol(object):
             )
             print("Das Protokoll wurde trotzdem bearbeitet und gespeichert.")
 
+    def create_tex(self):
+        print(self.path)
+
 class TOP(Protocol):
     """
     Separates the several TOPs out of one protocol and provides different
