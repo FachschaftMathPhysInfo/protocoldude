@@ -517,6 +517,13 @@ def main():
         dest="disable_svn",
     )
     parser.add_argument(
+        "--disable-official",
+        help="Unterdruckt die Erstellung eines .tex Templates als offizielles Protokoll. So wird auch eine bereits existierende Datei nicht uberschrieben",
+        action="store_true",
+        dest="disable_official",
+    )
+ 
+    parser.add_argument(
         "--disable-path-checking",
         help="Verhindert eine Überprüfung des angegebenen Dateinamens.",
         action="store_true",
@@ -562,7 +569,10 @@ def main():
     protocol.get_tops()
     protocol.get_users()
     protocol.rename_title()
-    protocol.official()
+    if not args.disable_official:
+        protocol.official()
+    else:
+        print("Keine .tex Datei als offizielles Protokoll erstellt.")
     if not args.disable_mail:
         protocol.send_mails()
     else:
