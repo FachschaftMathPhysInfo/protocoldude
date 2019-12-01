@@ -53,6 +53,7 @@ LIST_USERS = [
     ["vertagt", "Liebe SiMo"],
     ["schluesselinhaber", "Liebe/r Bewohner/in des Fachschaftsraums"],
     ["finanzen", "Sehr geehrte Menschen mit Ahnung der vielen Goldbarren"]
+    ["vorkurs", "Lieber AK Vorkurs"],
 ]
 
 class Protocol(object):
