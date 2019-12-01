@@ -375,18 +375,11 @@ class TOP(Protocol):
                     if result:
                         self.mails.append(result)
                     else:
+                        self.unknown.append(user)
                         self.mails.append([])
 
             print("User: {} - Mail: {}\n".format(user, self.mails[k]))
         print("\n")
-#        else:
-#           if self.mails:
-#                if result:
-#                    self.mails += result
-#                else:
-#                    self.unknown.append(result)
-#            else:
-#                self.mails = result
 
         return self.unknown
 
