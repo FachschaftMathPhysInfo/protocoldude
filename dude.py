@@ -150,6 +150,7 @@ class Protocol(object):
             end = title_lines[i+1] - 1
             top = TOP(i + 1, begin, end, self.protocol, self.args)
             self.tops.append(top)
+        print([top.title.title_text for top in self.tops])
 
     def rename_title(self):
         """Adjust TOP title type setting"""
@@ -238,6 +239,7 @@ class Protocol(object):
         einladung = r"""% !TEX program    = pdflatex
 % !TEX encoding   = UTF-8
 % !TEX spellcheck = de_DE
+
 \documentclass[11pt, fachschaft=mathphys,twosided=true]{mathphys/mathphys-article}
 \usepackage[utf8]{inputenc}
 \usepackage[ngerman]{babel}
@@ -258,34 +260,43 @@ class Protocol(object):
 \newcommand{\konsensFsrPhys}{Die Fachschaftsratssitzung Physik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
 % \newcommand{\konsensFsrMathe}{Die Fachschaftsratssitzung Mathematik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
 \newcommand{\konsensFsrInfo}{Die Fachschaftsratssitzung Informatik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
+
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{1em}
+
 \begin{document}
 \date{\vspace{-2em}6. November 2019\vspace{-1em}} % Datum ersetzen
 \title{\vspace{-2em}Protokoll der Fachschaftssitzung MathPhysInfo}
 \maketitle
+
 \begin{tabbing}
     \textbf{Sitzungsmoderation:}\quad\=Kai-Uwe \\ % SiMo einfügen
     \textbf{Protokoll:}\> Max M\"uller \\% Protokoll einfügen
     \textbf{Beginn:}\>18:15 Uhr\\
     \textbf{Ende:}\>xx:xx Uhr\\ % Sitzungsende einfügen
 \end{tabbing}
+
 \section{Begrüßung}
     Die Sitzungsmoderation begrüßt die anwesenden Mitglieder der Studienfachschaften Mathematik, Physik und Informatik und eröffnet so die Fachschaftsvollversammlung der Studienfachschaften Mathematik, Physik und Informatik.
+
 \section{Feststellung der Beschlussfähigkeiten}
     Fachschaftsrat Physik, Mathe und Informatik sind alle Beschlussfähig.
+
 \section{Beschluss des Protokolls der letzten Sitzung}
+
 \begin{antrag}
 	Annahme des Protokolls vom xx. Monat 2019.
 \end{antrag}
 \konsensE{}
+
 \section{Feststellen der Tagesordnung}
 \begin{antrag}
     Die Tagesordnung wird in der vorliegenden Form angenommen.
 \end{antrag}
 \konsens{}
+
 \section{Sitzungsmoderation für die nächste Sitzung}
-Die Sitzungsmoderation für die Fachschaftssitzung MathPhysInfo der nächsten Woche wird von xxx übernommen. % SiMo nachste Woche einfugen
+    Die Sitzungsmoderation für die Fachschaftssitzung MathPhysInfo der nächsten Woche wird von xxx übernommen. % SiMo nachste Woche einfugen
         """
 
         for top in self.tops[5:]:
@@ -551,7 +562,7 @@ def main():
     protocol.get_tops()
     protocol.get_users()
     protocol.rename_title()
-    protocol.create_tex()
+    protocol.official()
     if not args.disable_mail:
         protocol.send_mails()
     else:
