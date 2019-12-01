@@ -150,7 +150,6 @@ class Protocol(object):
             end = title_lines[i+1] - 1
             top = TOP(i + 1, begin, end, self.protocol, self.args)
             self.tops.append(top)
-        print([top.title.title_text for top in self.tops])
 
     def rename_title(self):
         """Adjust TOP title type setting"""
@@ -297,7 +296,8 @@ class Protocol(object):
 
 \section{Sitzungsmoderation für die nächste Sitzung}
     Die Sitzungsmoderation für die Fachschaftssitzung MathPhysInfo der nächsten Woche wird von xxx übernommen. % SiMo nachste Woche einfugen
-        """
+
+"""
 
         for top in self.tops[5:]:
             top.title.title_text = top.title.title_text.replace("&", "\\&")
@@ -367,7 +367,7 @@ class TOP(Protocol):
                     new_name = user
                     while not result and new_name !='q': # loop until correct user or stopping condition entered
                         print('\n"{}" ist kein Nutzer und keine bekannte Mailing-Liste.'.format(new_name))
-                        new_name = input("Bitte gib den korrektren Mailempfanger ein: ")
+                        new_name = input("Bitte gib den korrektren Mailempfanger ein oder uberspringe mit 'q': ")
                         result = extract_mails(ldap_search([new_name], self.unknown)) # search remaining users in LDAP
                         if not result and any(new_name.lower() in account for account, greeting in LIST_USERS):
                             result = new_name + "@mathphys.stura.uni-heidelberg.de"
@@ -376,7 +376,8 @@ class TOP(Protocol):
                     else:
                         self.mails.append([])
 
-            print("User: {} - result: {}\n".format(user, self.mails[k]))
+            print("User: {} - Mail: {}\n".format(user, self.mails[k]))
+        print("\n")
 #        else:
 #           if self.mails:
 #                if result:
@@ -434,15 +435,13 @@ def ldap_search(users: list, unknown: list) -> list:
 
     # Remove all users without query results
     users = [user for user in users if user[1]]
-#    print("Users: {}".format(users))
-#    print("Old users: {}".format(users_old))
     non_found = [
         old_user for old_user in users_old if old_user not in
         [user[0] for user in users]
     ]
-    if len(users) < len(users_old):
-        userstring = "\"" + "\", \"".join(non_found) + "\""
-        print(f"\nThe following user could not be found in the LDAP: {userstring}")
+#    if len(users) < len(users_old):
+#        userstring = "\"" + "\", \"".join(non_found) + "\""
+#        print(f"\nThe following user could not be found in the LDAP: {userstring}")
 
     return users
 
