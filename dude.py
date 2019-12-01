@@ -49,55 +49,6 @@ LIST_USERS = [
     ["physfakrat", "Liebes Mitglied des Physik-Fakrats"],
     ["fakratphys", "Liebes Mitglied des Physik-Fakrats"],
     ["fakratphysik", "Liebes Mitglied des Physik-Fakrats"],
-# -*- coding: utf-8 -*-
-
-# possible input mail adresses:
-#     ${internal}          => internal@mathphys.stura.uni-heidelberg.de
-#     ${external@some.com} => external@some.com
-
-import argparse
-import datetime
-import subprocess
-import re
-import smtplib
-import getpass
-import tempfile
-import urllib.request
-import sys
-import os
-
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-
-import ldap
-
-__version__ = "v3.0.2"
-
-MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
-MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
-
-# define common mail lists and aliases
-LIST_USERS = [
-    ["fachschaft", "Liebe Fachschaft"],
-    ["flachschaft", "Liebe Fachschaft"],
-    ["bernd", "Liebe Fachschaft"],
-    ["fsinformatik", "Liebe Fachschaft"],
-    ["fsphysik", "Liebe Fachschaft"],
-    ["fsmathematik", "Liebe Fachschaft"],
-    ["fsmathinf", "Liebe Fachschaft"],
-    ["infostudkom", "Liebes Mitglied der Studienkommission Informatik"],
-    ["tistudkom", "Liebes Mitglied der Studkom TI"],
-    ["mathstudkom", "Liebe MathStudKomLerInnen"],
-    ["mathestudkom", "Liebe MathStudKomLerInnen"],
-    ["physstudkom", "Liebe Mitglied der Studkom Physik"],
-    ["physikstudkom", "Liebe Mitglied der Studkom Physik"],
-    ["studkomphysik", "Liebe Mitglied der Studkom Physik"],
-    ["scstudkom", "Liebe Mitglied der Studkom SciCom"],
-    ["mathfakrat", "Liebes Mitglied des MatheInfo-Fakrats"],
-    ["fakratmathinf", "Liebes Mitglied des MatheInfo-Fakrats"],
-    ["physfakrat", "Liebes Mitglied des Physik-Fakrats"],
-    ["fakratphys", "Liebes Mitglied des Physik-Fakrats"],
-    ["fakratphysik", "Liebes Mitglied des Physik-Fakrats"],
     ["akfest", "Liebes Mitglied der AK-Fest Liste"],
     ["vertagt", "Liebe SiMo"],
     ["schluesselinhaber", "Liebe/r Bewohner/in des Fachschaftsraums"],
@@ -285,82 +236,72 @@ class Protocol(object):
         """Create official protocol as yyy-mm-dd.tex file. Use the TOP titles as section names."""
 
         einladung = r"""% !TEX program    = pdflatex
-        % !TEX encoding   = UTF-8
-        % !TEX spellcheck = de_DE
-
-        \documentclass[11pt, fachschaft=mathphys,twosided=true]{mathphys/mathphys-article}
-
-        \usepackage[utf8]{inputenc}
-        \usepackage[ngerman]{babel}
-        \usepackage[T1]{fontenc}
-        \usepackage{eurosym}
-        \usepackage{booktabs}
-        \renewcommand\thesection{TOP \arabic{section}:}
-        \renewcommand*\thesubsection{TOP \arabic{section}.\arabic{subsection}:}
-        \renewcommand\contentsname{Tagesordnung}
-        \newenvironment{antrag}{\begin{quote}\begin{itshape}}{\end{itshape}\end{quote}}
-        \usepackage{hyperref}
-        %-------------------------------------------------
-        % Konsensvorlagen (ggf. anpassen!)
-        %-------------------------------------------------
-        \newcommand{\konsens}[1]{In der Fachschaftssitzung MathPhysInfo, sowie in den anwesenden Fachschaftsräten, besteht Konsens ohne Bedenken.\\} % immer die Anzahl der Anwesenden anpassen!
-        \newcommand{\konsensLB}[1]{In der Fachschaftssitzung MathPhysInfo, sowie in den anwesenden Fachschaftsräten, besteht Konsens mit leichten Bedenken.\\} % immer die Anzahl der Anwesenden anpassen!
-        \newcommand{\konsensE}[1]{In der Fachschaftssitzung MathPhysInfo, sowie in den anwesenden Fachschaftsräten, besteht Konsens mit Enthaltung.\\} % immer die Anzahl der Anwesenden anpassen!
-        \newcommand{\konsensFsrPhys}{Die Fachschaftsratssitzung Physik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
-        % \newcommand{\konsensFsrMathe}{Die Fachschaftsratssitzung Mathematik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
-        \newcommand{\konsensFsrInfo}{Die Fachschaftsratssitzung Informatik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
-
-        \setlength{\parindent}{0pt}
-        \setlength{\parskip}{1em}
-
-        \begin{document}
-        \date{\vspace{-2em}6. November 2019\vspace{-1em}} % Datum ersetzen
-        \title{\vspace{-2em}Protokoll der Fachschaftssitzung MathPhysInfo}
-        \maketitle
-
-        \begin{tabbing}
-            \textbf{Sitzungsmoderation:}\quad\=Kai-Uwe \\ % SiMo einfügen
-            \textbf{Protokoll:}\> Max M\"uller \\% Protokoll einfügen
-            \textbf{Beginn:}\>18:15 Uhr\\
-            \textbf{Ende:}\>xx:xx Uhr\\ % Sitzungsende einfügen
-        \end{tabbing}
-
-        \section{Begrüßung}
-            Die Sitzungsmoderation begrüßt die anwesenden Mitglieder der Studienfachschaften Mathematik, Physik und Informatik und eröffnet so die Fachschaftsvollversammlung der Studienfachschaften Mathematik, Physik und Informatik.
-
-        \section{Feststellung der Beschlussfähigkeiten}
-            Fachschaftsrat Physik, Mathe und Informatik sind alle Beschlussfähig.
-
-        \section{Beschluss des Protokolls der letzten Sitzung}
-
-        \begin{antrag}
-        	Annahme des Protokolls vom xx. Monat 2019.
-        \end{antrag}
-        \konsensE{}
-
-        \section{Feststellen der Tagesordnung}
-        \begin{antrag}
-            Die Tagesordnung wird in der vorliegenden Form angenommen.
-        \end{antrag}
-        \konsens{}
-
-        \section{Sitzungsmoderation für die nächste Sitzung}
-            Die Sitzungsmoderation für die Fachschaftssitzung MathPhysInfo der nächsten Woche wird von xxx übernommen. % SiMo nachste Woche einfugen
+% !TEX encoding   = UTF-8
+% !TEX spellcheck = de_DE
+\documentclass[11pt, fachschaft=mathphys,twosided=true]{mathphys/mathphys-article}
+\usepackage[utf8]{inputenc}
+\usepackage[ngerman]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{eurosym}
+\usepackage{booktabs}
+\renewcommand\thesection{TOP \arabic{section}:}
+\renewcommand*\thesubsection{TOP \arabic{section}.\arabic{subsection}:}
+\renewcommand\contentsname{Tagesordnung}
+\newenvironment{antrag}{\begin{quote}\begin{itshape}}{\end{itshape}\end{quote}}
+\usepackage{hyperref}
+%-------------------------------------------------
+% Konsensvorlagen (ggf. anpassen!)
+%-------------------------------------------------
+\newcommand{\konsens}[1]{In der Fachschaftssitzung MathPhysInfo, sowie in den anwesenden Fachschaftsräten, besteht Konsens ohne Bedenken.\\} % immer die Anzahl der Anwesenden anpassen!
+\newcommand{\konsensLB}[1]{In der Fachschaftssitzung MathPhysInfo, sowie in den anwesenden Fachschaftsräten, besteht Konsens mit leichten Bedenken.\\} % immer die Anzahl der Anwesenden anpassen!
+\newcommand{\konsensE}[1]{In der Fachschaftssitzung MathPhysInfo, sowie in den anwesenden Fachschaftsräten, besteht Konsens mit Enthaltung.\\} % immer die Anzahl der Anwesenden anpassen!
+\newcommand{\konsensFsrPhys}{Die Fachschaftsratssitzung Physik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
+% \newcommand{\konsensFsrMathe}{Die Fachschaftsratssitzung Mathematik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
+\newcommand{\konsensFsrInfo}{Die Fachschaftsratssitzung Informatik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1em}
+\begin{document}
+\date{\vspace{-2em}6. November 2019\vspace{-1em}} % Datum ersetzen
+\title{\vspace{-2em}Protokoll der Fachschaftssitzung MathPhysInfo}
+\maketitle
+\begin{tabbing}
+    \textbf{Sitzungsmoderation:}\quad\=Kai-Uwe \\ % SiMo einfügen
+    \textbf{Protokoll:}\> Max M\"uller \\% Protokoll einfügen
+    \textbf{Beginn:}\>18:15 Uhr\\
+    \textbf{Ende:}\>xx:xx Uhr\\ % Sitzungsende einfügen
+\end{tabbing}
+\section{Begrüßung}
+    Die Sitzungsmoderation begrüßt die anwesenden Mitglieder der Studienfachschaften Mathematik, Physik und Informatik und eröffnet so die Fachschaftsvollversammlung der Studienfachschaften Mathematik, Physik und Informatik.
+\section{Feststellung der Beschlussfähigkeiten}
+    Fachschaftsrat Physik, Mathe und Informatik sind alle Beschlussfähig.
+\section{Beschluss des Protokolls der letzten Sitzung}
+\begin{antrag}
+	Annahme des Protokolls vom xx. Monat 2019.
+\end{antrag}
+\konsensE{}
+\section{Feststellen der Tagesordnung}
+\begin{antrag}
+    Die Tagesordnung wird in der vorliegenden Form angenommen.
+\end{antrag}
+\konsens{}
+\section{Sitzungsmoderation für die nächste Sitzung}
+Die Sitzungsmoderation für die Fachschaftssitzung MathPhysInfo der nächsten Woche wird von xxx übernommen. % SiMo nachste Woche einfugen
         """
 
-        for top in self.tops:
-            einladung += "\\section{" + top.title + "}"
+        for top in self.tops[5:]:
+            top.title.title_text = top.title.title_text.replace("&", "\\&")
+            einladung += "\\section{" + top.title.title_text[top.title.title_text.find(":")+2:] + "}\n\n"
 
         einladung += """
                 \emph{Die Sitzungmoderation schließt die Sitzung um xx:xx Uhr.}
-
                 \end{document}
                 """
 
         filename = self.path[:-4]
         path = filename + '.tex'
-        while open((self.path[:-4] + '.tex'), 'w') as f:
+        with open((self.path[:-4] + '.tex'), 'w') as f:
             f.write(einladung)
+
 
 class TOP(Protocol):
     """
