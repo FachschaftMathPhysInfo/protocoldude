@@ -28,33 +28,33 @@ MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
 
 # define common mail lists and aliases
-LIST_USERS = [
-    ["fachschaft", "Liebe Fachschaft"],
-    ["flachschaft", "Liebe Fachschaft"],
-    ["bernd", "Liebe Fachschaft"],
-    ["fsinformatik", "Liebe Fachschaft"],
-    ["fsphysik", "Liebe Fachschaft"],
-    ["fsmathematik", "Liebe Fachschaft"],
-    ["fsmathinf", "Liebe Fachschaft"],
-    ["infostudkom", "Liebes Mitglied der Studienkommission Informatik"],
-    ["tistudkom", "Liebes Mitglied der Studkom TI"],
-    ["mathstudkom", "Liebe MathStudKomLerInnen"],
-    ["mathestudkom", "Liebe MathStudKomLerInnen"],
-    ["physstudkom", "Liebe Mitglied der Studkom Physik"],
-    ["physikstudkom", "Liebe Mitglied der Studkom Physik"],
-    ["studkomphysik", "Liebe Mitglied der Studkom Physik"],
-    ["scstudkom", "Liebe Mitglied der Studkom SciCom"],
-    ["mathfakrat", "Liebes Mitglied des MatheInfo-Fakrats"],
-    ["fakratmathinf", "Liebes Mitglied des MatheInfo-Fakrats"],
-    ["physfakrat", "Liebes Mitglied des Physik-Fakrats"],
-    ["fakratphys", "Liebes Mitglied des Physik-Fakrats"],
-    ["fakratphysik", "Liebes Mitglied des Physik-Fakrats"],
-    ["akfest", "Liebes Mitglied der AK-Fest Liste"],
-    ["vertagt", "Liebe SiMo"],
-    ["schluesselinhaber", "Liebe/r Bewohner/in des Fachschaftsraums"],
-    ["finanzen", "Sehr geehrte Menschen mit Ahnung der vielen Goldbarren"]
-    ["vorkurs", "Lieber AK Vorkurs"],
-]
+LIST_USERS = {
+    "fachschaft": "Liebe Fachschaft",
+    "flachschaft": "Liebe Fachschaft",
+    "bernd": "Liebe Fachschaft",
+    "fsinformatik": "Liebe Fachschaft",
+    "fsphysik": "Liebe Fachschaft",
+    "fsmathematik": "Liebe Fachschaft",
+    "fsmathinf": "Liebe Fachschaft",
+    "infostudkom": "Liebes Mitglied der Studienkommission Informatik",
+    "tistudkom": "Liebes Mitglied der Studkom TI",
+    "mathstudkom": "Liebe MathStudKomLerInnen",
+    "mathestudkom": "Liebe MathStudKomLerInnen",
+    "physstudkom": "Liebe Mitglied der Studkom Physik",
+    "physikstudkom": "Liebe Mitglied der Studkom Physik",
+    "studkomphysik": "Liebe Mitglied der Studkom Physik",
+    "scstudkom": "Liebe Mitglied der Studkom SciCom",
+    "mathfakrat": "Liebes Mitglied des MatheInfo-Fakrats",
+    "fakratmathinf": "Liebes Mitglied des MatheInfo-Fakrats",
+    "physfakrat": "Liebes Mitglied des Physik-Fakrats",
+    "fakratphys": "Liebes Mitglied des Physik-Fakrats",
+    "fakratphysik": "Liebes Mitglied des Physik-Fakrats",
+    "akfest": "Liebes Mitglied der AK-Fest Liste",
+    "vertagt": "Liebe SiMo",
+    "schluesselinhaber": "Liebe/r Bewohner/in des Fachschaftsraums",
+    "finanzen": "Sehr geehrte Menschen mit Ahnung der vielen Goldbarren",
+    "vorkurs": "Lieber AK Vorkurs",
+}
 
 class Protocol(object):
     """reads in the protocol and processes it"""
@@ -361,8 +361,8 @@ class TOP(Protocol):
             result = extract_mails(ldap_search([user], self.unknown)) # search remaining users in LDAP
             if result:
                 self.mails.append(result)
-            else: 
-                if any(user.lower() in account for account, greeting in LIST_USERS):
+            else:
+                if user.lower() in LIST_USERS:
                     self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
                 else:
                     new_name = user
@@ -370,7 +370,7 @@ class TOP(Protocol):
                         print('\n"{}" ist kein Nutzer und keine bekannte Mailing-Liste.'.format(new_name))
                         new_name = input("Bitte gib den korrektren Mailempfanger ein oder uberspringe mit 'q': ")
                         result = extract_mails(ldap_search([new_name], self.unknown)) # search remaining users in LDAP
-                        if not result and any(new_name.lower() in account for account, greeting in LIST_USERS):
+                        if not result and user.lower() in LIST_USERS:
                             result = new_name + "@mathphys.stura.uni-heidelberg.de"
                     if result:
                         self.mails.append(result)
@@ -396,7 +396,7 @@ class TOP(Protocol):
             msg["To"] = mail
             msg["Subject"] = self.args.mail_subject_prefix + ": " + self.title.title_text
 
-            if any(user.lower() in account for account, greeting in LIST_USERS):
+            if user.lower() in LIST_USERS:
                 body = [greeting for [account, greeting] in LIST_USERS if account == user.lower()][0] + ",\n\n"
             else:
                 body = "Hallo {},\n\n".format(user)
@@ -515,7 +515,7 @@ def main():
         action="store_true",
         dest="disable_official",
     )
- 
+
     parser.add_argument(
         "--disable-path-checking",
         help="Verhindert eine Überprüfung des angegebenen Dateinamens.",
