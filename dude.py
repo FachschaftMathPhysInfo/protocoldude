@@ -13,6 +13,7 @@ import re
 import smtplib
 import getpass
 import tempfile
+import locale
 import urllib.request
 import sys
 import os
@@ -234,8 +235,14 @@ class Protocol(object):
             print("Das Protokoll wurde trotzdem bearbeitet und gespeichert.")
 
     def official(self):
-        """Create official protocol as yyy-mm-dd.tex file. Use the TOP titles as section names."""
+        """
+        Create official protocol as yyy-mm-dd.tex file. Use the TOP titles as section names.
+        """
 
+        # split = self.path.split(".")[0].split("-")
+        # print(split)
+        locale.setlocale(locale.LC_ALL, 'de_DE')
+        date = datetime.datetime.strptime(self.path.split(".")[0], "%Y-%m-%d").strftime("%d. %B %Y")
         einladung = r"""% !TEX program    = pdflatex
 % !TEX encoding   = UTF-8
 % !TEX spellcheck = de_DE
@@ -265,7 +272,9 @@ class Protocol(object):
 \setlength{\parskip}{1em}
 
 \begin{document}
-\date{\vspace{-2em}6. November 2019\vspace{-1em}} % Datum ersetzen
+\date{\vspace{-2em}"""
+        einladung += date
+        einladung += r"""\vspace{-1em}} % Datum ersetzen
 \title{\vspace{-2em}Protokoll der Fachschaftssitzung MathPhysInfo}
 \maketitle
 
@@ -510,10 +519,10 @@ def main():
         dest="disable_svn",
     )
     parser.add_argument(
-        "--disable-official",
+        "--disable-tex",
         help="Unterdruckt die Erstellung eines .tex Templates als offizielles Protokoll. So wird auch eine bereits existierende Datei nicht uberschrieben",
         action="store_true",
-        dest="disable_official",
+        dest="disable_tex",
     )
 
     parser.add_argument(
@@ -562,10 +571,10 @@ def main():
     protocol.get_tops()
     protocol.get_users()
     protocol.rename_title()
-    if not args.disable_official:
+    if not args.disable_tex:
         protocol.official()
     else:
-        print("Keine .tex Datei als offizielles Protokoll erstellt.")
+        print("Keine .tex Datei als offizielle Protokollvorlage erstellt.")
     if not args.disable_mail:
         protocol.send_mails()
     else:
