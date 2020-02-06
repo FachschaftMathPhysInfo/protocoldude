@@ -240,16 +240,18 @@ class Protocol(object):
 
     def send_mails(self, username="", tries=0):
         try:
-            server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
-            prompt = "Passwort für deinen Uni Account: "
-            if not username:
-                username = input("Uni ID für den Mailversand: ")
-            prompt = "Passwort für {}: ".format(username)
-            server.login(
-                username, getpass.getpass(prompt=prompt)
-            )
+            server = smtplib.SMTP("mail.mathphys.stura.uni-heidelberg.de", 25)
+            # server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
+            # prompt = "Passwort für deinen Uni Account: "
+            # if not username:
+            #     username = input("Uni ID für den Mailversand: ")
+            # prompt = "Passwort für {}: ".format(username)
+            # server.login(
+            #     username, getpass.getpass(prompt=prompt)
+            # )
 
             mailcount = 0
+            print(self.tops[0])
             for top in self.tops:
                 mailcount += top.send_mail(server)
             server.quit()
@@ -258,14 +260,15 @@ class Protocol(object):
                 print("\nEs wurde erfolgreich eine Mail versendet!\n")
             else:
                 print("\nEs wurden erfolgreich {} Mails verschickt.\n".format(mailcount))
-            if self.unknown:
-                print("An folgende Nutzer konnte aus unerklärlichen Gründen keine Mail versandt werden:")
-                for user in self.unknown:
-                    print("    - {}".format(user))
-        except smtplib.SMTPAuthenticationError:
-            print("Du hast die falschen Anmeldedaten eingegeben!")
-            print("Bitte versuche es noch einmal:")
-            self.send_mails(username=username, tries=tries+1)
+            # if self.unknown:
+            #     print("An folgende Nutzer konnte aus unerklärlichen Gründen keine Mail versandt werden:")
+            #     for user in self.unknown:
+            #         print("    - {}".format(user))
+
+        # except smtplib.SMTPAuthenticationError:
+        #     print("Du hast die falschen Anmeldedaten eingegeben!")
+        #     print("Bitte versuche es noch einmal:")
+        #     self.send_mails(username=username, tries=tries+1)
         except Exception as e:
             print(e)
             print(
@@ -327,6 +330,31 @@ class Protocol(object):
         with open((self.path[:-4] + '.tex'), 'w') as f:
             f.write(einladung)
 
+    def remind(self):
+        for line in self.protocol[:5]:
+            if "protokoll" in line.lower():
+                user = re.findall(r"\$\{(.*?)\}", line)[0]
+                if len(extract_mails(ldap_search([user], [])))>0:
+                    mail = extract_mails(ldap_search([user], []))[0]
+
+                    server = smtplib.SMTP("mail.mathphys.stura.uni-heidelberg.de", 25)
+                    msg = MIMEMultipart()
+                    msg["From"] = self.args.from_address
+                    msg["To"] = mail
+                    msg["Subject"] = "Du bist dran: Protokoll offizialisieren"
+
+                    body = "Vielen Dank, dass du in der letzten Sitzung das Protokoll geschrieben hast. Ganz fertig ist deine Aufgabe aber noch nicht: Du musst aus dem inoffiziellen Protokoll noch eine offizielle Version schreiben. Dazu wurde bereits eine Vorlage erstellt, die du nur noch mit Inhalt füllen musst. Du findest sie im Sumpf unter: {}\n\nViele Grüße, Dein SPAM-Skript.".format(self.path[:-4] + '.tex')
+                    # \n\nSollte der Text abgeschnitten sein, schaue bitte im Sitzungsprotokoll nach (Zeile #{tops[i]} – MathPhys Login notwendig).\n#{url}/#{file}\" | mail -a \"Reply-To: #{$replyto}\" -a \"Content-Type: text/plain; charset=UTF-8\" -s \"#{$subject}: #{title} (#{date})\" '#{mail}';", false) unless $debug
+
+                    msg.attach(MIMEText(body, "plain"))
+                    text = msg.as_string()
+                    server.sendmail(self.args.from_address, mail, text)
+                    server.quit()
+                    print("Eine Erinnerung an den Protokollanten wurde erfolgreich verschickt!")
+                    return
+
+        print("Eine Erinnerung an den Protokollanten konnte nicht verschickt werden. Denke selber dran, das offizielle Protokoll zu erstellen. Eine Vorlage liegt bereits in diesem Ordner.")
+        return
 
 class TOP(Protocol):
     """
@@ -418,7 +446,7 @@ class TOP(Protocol):
 
             msg.attach(MIMEText(body, "plain"))
             text = msg.as_string()
-#            server.sendmail(from_addr, mail, text)
+            # server.sendmail(from_addr, mail, text)
             self.send +=1
             self.users.remove(user)
             self.mails.remove(mail)
@@ -585,6 +613,7 @@ def main():
     else:
         print("Keine .tex Datei als offizielle Protokollvorlage erstellt.")
     if not args.disable_mail:
+        protocol.remind()
         protocol.send_mails()
     else:
         print("Mailversand nicht aktiviert!")
