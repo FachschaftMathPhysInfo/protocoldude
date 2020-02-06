@@ -1,8 +1,7 @@
 :Protocoldude: Mails versandt @ 15:50 10.11.2019
 
-
 Simo: Johannes
-Protokoll: Thorsten
+Protokoll: Thorsten ${tbus}
 Beginn: 18:15 Uhr
 Ende: 19:09 Uhr
 
