@@ -251,7 +251,7 @@ class Protocol(object):
             # )
 
             mailcount = 0
-            print(self.tops[0])
+            print(len(self.tops))
             for top in self.tops:
                 mailcount += top.send_mail(server)
             server.quit()
@@ -344,7 +344,6 @@ class Protocol(object):
                     msg["Subject"] = "Du bist dran: Protokoll offizialisieren"
 
                     body = "Vielen Dank, dass du in der letzten Sitzung das Protokoll geschrieben hast. Ganz fertig ist deine Aufgabe aber noch nicht: Du musst aus dem inoffiziellen Protokoll noch eine offizielle Version schreiben. Dazu wurde bereits eine Vorlage erstellt, die du nur noch mit Inhalt füllen musst. Du findest sie im Sumpf unter: {}\n\nViele Grüße, Dein SPAM-Skript.".format(self.path[:-4] + '.tex')
-                    # \n\nSollte der Text abgeschnitten sein, schaue bitte im Sitzungsprotokoll nach (Zeile #{tops[i]} – MathPhys Login notwendig).\n#{url}/#{file}\" | mail -a \"Reply-To: #{$replyto}\" -a \"Content-Type: text/plain; charset=UTF-8\" -s \"#{$subject}: #{title} (#{date})\" '#{mail}';", false) unless $debug
 
                     msg.attach(MIMEText(body, "plain"))
                     text = msg.as_string()
@@ -401,7 +400,7 @@ class TOP(Protocol):
             # if user in List_user append valid mail to "mails" else add user to not found
             result = extract_mails(ldap_search([user], self.unknown)) # search remaining users in LDAP
             if result:
-                self.mails.append(result)
+                self.mails.append(result[0])
             else:
                 if user.lower() in LIST_USERS:
                     self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
@@ -435,22 +434,19 @@ class TOP(Protocol):
             msg = MIMEMultipart()
             msg["From"] = from_addr
             msg["To"] = mail
-            msg["Subject"] = self.args.mail_subject_prefix + ": " + self.title.title_text
+            msg["Subject"] = self.args.mail_subject_prefix + " - " + self.title.title_text
 
             if user.lower() in LIST_USERS:
-                body = [greeting for [account, greeting] in LIST_USERS if account == user.lower()][0] + ",\n\n"
+                body = LIST_USERS[user.lower()] + ",\n\n"
             else:
                 body = "Hallo {},\n\n".format(user)
             body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(self.__str__())
-            # \n\nSollte der Text abgeschnitten sein, schaue bitte im Sitzungsprotokoll nach (Zeile #{tops[i]} – MathPhys Login notwendig).\n#{url}/#{file}\" | mail -a \"Reply-To: #{$replyto}\" -a \"Content-Type: text/plain; charset=UTF-8\" -s \"#{$subject}: #{title} (#{date})\" '#{mail}';", false) unless $debug
+            print(body)
 
             msg.attach(MIMEText(body, "plain"))
             text = msg.as_string()
             # server.sendmail(from_addr, mail, text)
             self.send +=1
-            self.users.remove(user)
-            self.mails.remove(mail)
-            print(user)
             print('Mail an "{}" zu {} gesendet.'.format(user, self.title.title_text))
         return self.send
 
