@@ -24,7 +24,7 @@ from email.mime.text import MIMEText
 
 import ldap
 
-__version__ = "v3.0.2"
+__version__ = "v4.0.2"
 
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
