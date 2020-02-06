@@ -150,6 +150,9 @@ class Protocol(object):
         self.mails_sent = False
         self.unknown = []
 
+    def check_dude(self) -> bool:
+        return ":Protocoldude:" in self.protocol[0]
+
     def check_path(self) -> bool:
         """
         Checks the input file name for a valid date and type .txt
@@ -312,8 +315,6 @@ class Protocol(object):
         Create official protocol as yyy-mm-dd.tex file. Use the TOP titles as section names.
         """
 
-        # split = self.path.split(".")[0].split("-")
-        # print(split)
         date = datetime.datetime.strptime(self.path.split(".")[0], "%Y-%m-%d").strftime("%d. %B %Y")
 
         section = ""
@@ -562,6 +563,7 @@ def main():
         version=__version__,
     )
 
+
     if len(sys.argv)==1: # print help message if no arguments were given
         parser.print_help(sys.stderr)
         sys.exit(1)
@@ -569,6 +571,10 @@ def main():
     args = parser.parse_args()
 
     protocol = Protocol(args)
+    if protocol.check_dude():
+        print("Das Protokoll wurde bereits gedudet.")
+        if input("Bist du sicher, dass du Leuten nochmal nervige SPAM Mails schicken willst? [j/N]") != "j":
+            return
     if not args.disable_path_check:
         protocol.check_path()
     protocol.get_tops()
