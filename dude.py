@@ -24,7 +24,7 @@ from email.mime.text import MIMEText
 
 import ldap
 
-__version__ = "v4.0.2"
+__version__ = "v4.0.3"
 
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
@@ -418,16 +418,13 @@ class TOP(Protocol):
                         self.unknown.append(user)
                         self.mails.append([])
 
-            print("User: {} - Mail: {}\n".format(user, self.mails[k]))
+            print("User: {} - Mail: {}".format(user, self.mails[k]))
         print("\n")
 
         return self.unknown
 
     def send_mail(self, server) -> int:
 
-        print(self.title)
-        print(self.users)
-        print(self.mails)
         for user, mail in zip(self.users, self.mails):
             from_addr = self.args.from_address
 
@@ -441,13 +438,13 @@ class TOP(Protocol):
             else:
                 body = "Hallo {},\n\n".format(user)
             body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(self.__str__())
-            print(body)
 
             msg.attach(MIMEText(body, "plain"))
             text = msg.as_string()
             server.sendmail(from_addr, mail, text)
             self.send +=1
             print('Mail an "{}" zu {} gesendet.'.format(user, self.title.title_text))
+
         return self.send
 
 
@@ -609,7 +606,7 @@ def main():
     else:
         print("Keine .tex Datei als offizielle Protokollvorlage erstellt.")
     if not args.disable_mail:
-        protocol.remind()
+        # protocol.remind()
         protocol.send_mails()
     else:
         print("Mailversand nicht aktiviert!")
