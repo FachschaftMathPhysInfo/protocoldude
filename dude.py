@@ -24,7 +24,7 @@ from email.mime.text import MIMEText
 
 import ldap
 
-__version__ = "v4.0.2"
+__version__ = "v4.0.3"
 
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
@@ -445,6 +445,7 @@ class TOP(Protocol):
             server.sendmail(from_addr, mail, text)
             self.send +=1
             print('Mail an "{}" zu {} gesendet.'.format(user, self.title.title_text))
+
         return self.send
 
 
@@ -606,7 +607,7 @@ def main():
     else:
         print("Keine .tex Datei als offizielle Protokollvorlage erstellt.")
     if not args.disable_mail:
-        protocol.remind()
+        # protocol.remind()
         protocol.send_mails()
     else:
         print("Mailversand nicht aktiviert!")
