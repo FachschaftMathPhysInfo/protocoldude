@@ -372,6 +372,7 @@ class TOP(Protocol):
         self.protocol = protocol
         self.title = TOP_Title(start, start+3, self.protocol[start+1])
         self.send = 0
+        print(self.__str__())
 
     def __str__(self):
         return "\n".join(self.protocol[self.start:self.end])
@@ -418,16 +419,13 @@ class TOP(Protocol):
                         self.unknown.append(user)
                         self.mails.append([])
 
-            print("User: {} - Mail: {}\n".format(user, self.mails[k]))
+#            print("User: {} - Mail: {}\n".format(user, self.mails[k]))
         print("\n")
 
         return self.unknown
 
     def send_mail(self, server) -> int:
 
-        print(self.title)
-        print(self.users)
-        print(self.mails)
         for user, mail in zip(self.users, self.mails):
             from_addr = self.args.from_address
 
@@ -441,7 +439,6 @@ class TOP(Protocol):
             else:
                 body = "Hallo {},\n\n".format(user)
             body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(self.__str__())
-            print(body)
 
             msg.attach(MIMEText(body, "plain"))
             text = msg.as_string()
