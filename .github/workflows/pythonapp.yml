@@ -1,4 +1,3 @@
-# YAML programming language
 name: Python application
 
 on: [push]
