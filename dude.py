@@ -147,16 +147,18 @@ class Protocol(object):
             self.path = splitted[len(splitted)-1]+'.txt'
         else:
             if os.path.isfile(self.path):
-                with open(self.path, "r") as file:
-                    self.protocol = file.read().splitlines()
+                self.read_protocol()
             else:
-                print("Es existiert kein Protokoll an dieser Stelle.\nÖffne einen Editor, um ein Protokoll unter diesem Pfad zu erstellen.")
-                self.protocol = [""]
-                # open editor
-                # create file
+                os.system("vim {}".format(self.path)) # create protocol and wait until editor is closed
+                self.read_protocol()
         self.tops = []
         self.mails_sent = False
         self.unknown = []
+
+    def read_protocol(self):
+        with open(self.path, "r") as file:
+            self.protocol = file.read().splitlines()
+        return True
 
     def check_dude(self) -> bool:
         return ":Protocoldude:" in self.protocol[0]

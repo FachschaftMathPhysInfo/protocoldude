@@ -1,3 +1,9 @@
+:Protocoldude: Mails versandt @ 23:09 27.03.2020
+
+
+:Protocoldude: Mails versandt @ 23:06 27.03.2020
+
+
 
 Simo: Johannes
 Protokoll: ChrisB ${chrisb}
@@ -9,12 +15,11 @@ TOP 1: Begrüßung
 ================
 Die anwesenden Fachschaftler werden begrüßt.
 Besonders ${Christoph chris-blattgerste@gmx.de}
-Und ${blattgerste@stud.uni-heidelberg.de}
 
 ===============================
 TOP 2: Protokoll letzte Sitzung
 ===============================
-Es gibt kein Protokoll. Darum wird der Beschluss ${chrisb}
+Es gibt kein Protokoll. Darum wird der Beschluss
 
 ================
 TOP 3: FS-Dienst
