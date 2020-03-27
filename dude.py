@@ -6,6 +6,7 @@
 #     ${internal}          => internal@mathphys.stura.uni-heidelberg.de
 #     ${external@some.com} => external@some.com
 
+from string import Template
 import argparse
 import datetime
 import subprocess
@@ -13,6 +14,7 @@ import re
 import smtplib
 import getpass
 import tempfile
+import locale
 import urllib.request
 import sys
 import os
@@ -22,10 +24,12 @@ from email.mime.text import MIMEText
 
 import ldap
 
-__version__ = "v3.0.2"
+__version__ = "v4.0.3"
 
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
+
+locale.setlocale(locale.LC_TIME, 'de_DE')
 
 # define common mail lists and aliases
 LIST_USERS = {
@@ -56,6 +60,75 @@ LIST_USERS = {
     "vorkurs": "Lieber AK Vorkurs",
 }
 
+vorlage = Template(r"""% !TEX program    = pdflatex
+% !TEX encoding   = UTF-8
+% !TEX spellcheck = de_DE
+
+\documentclass[11pt, fachschaft=mathphys,twosided=true]{mathphys/mathphys-article}
+\usepackage[utf8]{inputenc}
+\usepackage[ngerman]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{eurosym}
+\usepackage{booktabs}
+\renewcommand\thesection{TOP \arabic{section}:}
+\renewcommand*\thesubsection{TOP \arabic{section}.\arabic{subsection}:}
+\renewcommand\contentsname{Tagesordnung}
+\newenvironment{antrag}{\begin{quote}\begin{itshape}}{\end{itshape}\end{quote}}
+\usepackage{hyperref}
+%-------------------------------------------------
+% Konsensvorlagen (ggf. anpassen!)
+%-------------------------------------------------
+\newcommand{\konsens}[1]{In der Fachschaftssitzung MathPhysInfo, sowie in den anwesenden Fachschaftsräten, besteht Konsens ohne Bedenken.\\} % immer die Anzahl der Anwesenden anpassen!
+\newcommand{\konsensLB}[1]{In der Fachschaftssitzung MathPhysInfo, sowie in den anwesenden Fachschaftsräten, besteht Konsens mit leichten Bedenken.\\} % immer die Anzahl der Anwesenden anpassen!
+\newcommand{\konsensE}[1]{In der Fachschaftssitzung MathPhysInfo, sowie in den anwesenden Fachschaftsräten, besteht Konsens mit Enthaltung.\\} % immer die Anzahl der Anwesenden anpassen!
+\newcommand{\konsensFsrPhys}{Die Fachschaftsratssitzung Physik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
+% \newcommand{\konsensFsrMathe}{Die Fachschaftsratssitzung Mathematik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
+\newcommand{\konsensFsrInfo}{Die Fachschaftsratssitzung Informatik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1em}
+
+\begin{document}
+\date{\vspace{-2em} $datum \vspace{-1em}} % Datum ersetzen
+\title{\vspace{-2em}Protokoll der Fachschaftssitzung MathPhysInfo}
+\maketitle
+
+\begin{tabbing}
+    \textbf{Sitzungsmoderation:}\quad\=Kai-Uwe \\% SiMo einfügen
+    \textbf{Protokoll:}\> Max Müller \\% Protokoll einfügen
+    \textbf{Beginn:}\>18:15 Uhr\\
+    \textbf{Ende:}\>xx:xx Uhr\\ % Sitzungsende einfügen
+\end{tabbing}
+
+\section{Begrüßung}
+    Die Sitzungsmoderation begrüßt die anwesenden Mitglieder der Studienfachschaften Mathematik, Physik und Informatik und eröffnet so die Fachschaftsvollversammlung der Studienfachschaften Mathematik, Physik und Informatik.
+
+\section{Feststellung der Beschlussfähigkeiten}
+    Fachschaftsrat Physik, Mathe und Informatik sind alle Beschlussfähig.
+
+\section{Beschluss des Protokolls der letzten Sitzung}
+
+\begin{antrag}
+	Annahme des Protokolls vom xx. Monat 2019. \\% Datum einfügen
+\end{antrag}
+\konsensE{}
+
+\section{Feststellen der Tagesordnung}
+\begin{antrag}
+    Die Tagesordnung wird in der vorliegenden Form angenommen.
+\end{antrag}
+\konsens{}
+
+\section{Sitzungsmoderation für die nächste Sitzung}
+    Die Sitzungsmoderation für die Fachschaftssitzung MathPhysInfo der nächsten Woche wird von xxx übernommen. % SiMo nachste Woche einfugen
+
+$sections
+
+\emph{Die Sitzungmoderation schließt die Sitzung um xx:xx Uhr.}
+\end{document}
+""")
+
+
 class Protocol(object):
     """reads in the protocol and processes it"""
 
@@ -76,6 +149,9 @@ class Protocol(object):
         self.tops = []
         self.mails_sent = False
         self.unknown = []
+
+    def check_dude(self) -> bool:
+        return ":Protocoldude:" in self.protocol[0]
 
     def check_path(self) -> bool:
         """
@@ -164,16 +240,18 @@ class Protocol(object):
 
     def send_mails(self, username="", tries=0):
         try:
-            server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
-            prompt = "Passwort für deinen Uni Account: "
-            if not username:
-                username = input("Uni ID für den Mailversand: ")
-            prompt = "Passwort für {}: ".format(username)
-            server.login(
-                username, getpass.getpass(prompt=prompt)
-            )
+            server = smtplib.SMTP("mail.mathphys.stura.uni-heidelberg.de", 25)
+            # server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
+            # prompt = "Passwort für deinen Uni Account: "
+            # if not username:
+            #     username = input("Uni ID für den Mailversand: ")
+            # prompt = "Passwort für {}: ".format(username)
+            # server.login(
+            #     username, getpass.getpass(prompt=prompt)
+            # )
 
             mailcount = 0
+            print(len(self.tops))
             for top in self.tops:
                 mailcount += top.send_mail(server)
             server.quit()
@@ -182,14 +260,15 @@ class Protocol(object):
                 print("\nEs wurde erfolgreich eine Mail versendet!\n")
             else:
                 print("\nEs wurden erfolgreich {} Mails verschickt.\n".format(mailcount))
-            if self.unknown:
-                print("An folgende Nutzer konnte aus unerklärlichen Gründen keine Mail versandt werden:")
-                for user in self.unknown:
-                    print("    - {}".format(user))
-        except smtplib.SMTPAuthenticationError:
-            print("Du hast die falschen Anmeldedaten eingegeben!")
-            print("Bitte versuche es noch einmal:")
-            self.send_mails(username=username, tries=tries+1)
+            # if self.unknown:
+            #     print("An folgende Nutzer konnte aus unerklärlichen Gründen keine Mail versandt werden:")
+            #     for user in self.unknown:
+            #         print("    - {}".format(user))
+
+        # except smtplib.SMTPAuthenticationError:
+        #     print("Du hast die falschen Anmeldedaten eingegeben!")
+        #     print("Bitte versuche es noch einmal:")
+        #     self.send_mails(username=username, tries=tries+1)
         except Exception as e:
             print(e)
             print(
@@ -215,6 +294,7 @@ class Protocol(object):
         try:
             subprocess.run(["svn", "up"], check=True)
             subprocess.run(["svn", "add", "{}".format(self.path)], check=True)
+            subprocess.run(["svn", "add", "{}".format(self.path[:-3] + "tex")], check=True)
             subprocess.run(
                 [
                     "svn",
@@ -234,86 +314,46 @@ class Protocol(object):
             print("Das Protokoll wurde trotzdem bearbeitet und gespeichert.")
 
     def official(self):
-        """Create official protocol as yyy-mm-dd.tex file. Use the TOP titles as section names."""
+        """
+        Create official protocol as yyy-mm-dd.tex file. Use the TOP titles as section names.
+        """
 
-        einladung = r"""% !TEX program    = pdflatex
-% !TEX encoding   = UTF-8
-% !TEX spellcheck = de_DE
+        date = datetime.datetime.strptime(self.path.split(".")[0], "%Y-%m-%d").strftime("%d. %B %Y")
 
-\documentclass[11pt, fachschaft=mathphys,twosided=true]{mathphys/mathphys-article}
-\usepackage[utf8]{inputenc}
-\usepackage[ngerman]{babel}
-\usepackage[T1]{fontenc}
-\usepackage{eurosym}
-\usepackage{booktabs}
-\renewcommand\thesection{TOP \arabic{section}:}
-\renewcommand*\thesubsection{TOP \arabic{section}.\arabic{subsection}:}
-\renewcommand\contentsname{Tagesordnung}
-\newenvironment{antrag}{\begin{quote}\begin{itshape}}{\end{itshape}\end{quote}}
-\usepackage{hyperref}
-%-------------------------------------------------
-% Konsensvorlagen (ggf. anpassen!)
-%-------------------------------------------------
-\newcommand{\konsens}[1]{In der Fachschaftssitzung MathPhysInfo, sowie in den anwesenden Fachschaftsräten, besteht Konsens ohne Bedenken.\\} % immer die Anzahl der Anwesenden anpassen!
-\newcommand{\konsensLB}[1]{In der Fachschaftssitzung MathPhysInfo, sowie in den anwesenden Fachschaftsräten, besteht Konsens mit leichten Bedenken.\\} % immer die Anzahl der Anwesenden anpassen!
-\newcommand{\konsensE}[1]{In der Fachschaftssitzung MathPhysInfo, sowie in den anwesenden Fachschaftsräten, besteht Konsens mit Enthaltung.\\} % immer die Anzahl der Anwesenden anpassen!
-\newcommand{\konsensFsrPhys}{Die Fachschaftsratssitzung Physik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
-% \newcommand{\konsensFsrMathe}{Die Fachschaftsratssitzung Mathematik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
-\newcommand{\konsensFsrInfo}{Die Fachschaftsratssitzung Informatik entscheidet einstimmig, den Beschluss entsprechend der Entscheidung der Fachschaftssitzung MathPhysInfo umzusetzen.\\}
-
-\setlength{\parindent}{0pt}
-\setlength{\parskip}{1em}
-
-\begin{document}
-\date{\vspace{-2em}6. November 2019\vspace{-1em}} % Datum ersetzen
-\title{\vspace{-2em}Protokoll der Fachschaftssitzung MathPhysInfo}
-\maketitle
-
-\begin{tabbing}
-    \textbf{Sitzungsmoderation:}\quad\=Kai-Uwe \\ % SiMo einfügen
-    \textbf{Protokoll:}\> Max M\"uller \\% Protokoll einfügen
-    \textbf{Beginn:}\>18:15 Uhr\\
-    \textbf{Ende:}\>xx:xx Uhr\\ % Sitzungsende einfügen
-\end{tabbing}
-
-\section{Begrüßung}
-    Die Sitzungsmoderation begrüßt die anwesenden Mitglieder der Studienfachschaften Mathematik, Physik und Informatik und eröffnet so die Fachschaftsvollversammlung der Studienfachschaften Mathematik, Physik und Informatik.
-
-\section{Feststellung der Beschlussfähigkeiten}
-    Fachschaftsrat Physik, Mathe und Informatik sind alle Beschlussfähig.
-
-\section{Beschluss des Protokolls der letzten Sitzung}
-
-\begin{antrag}
-	Annahme des Protokolls vom xx. Monat 2019.
-\end{antrag}
-\konsensE{}
-
-\section{Feststellen der Tagesordnung}
-\begin{antrag}
-    Die Tagesordnung wird in der vorliegenden Form angenommen.
-\end{antrag}
-\konsens{}
-
-\section{Sitzungsmoderation für die nächste Sitzung}
-    Die Sitzungsmoderation für die Fachschaftssitzung MathPhysInfo der nächsten Woche wird von xxx übernommen. % SiMo nachste Woche einfugen
-
-"""
-
+        section = ""
         for top in self.tops[5:]:
             top.title.title_text = top.title.title_text.replace("&", "\\&")
-            einladung += "\\section{" + top.title.title_text[top.title.title_text.find(":")+2:] + "}\n\n"
+            section += "\\section{" + top.title.title_text[top.title.title_text.find(":")+2:] + "}\n\n"
 
-        einladung += """
-                \emph{Die Sitzungmoderation schließt die Sitzung um xx:xx Uhr.}
-                \end{document}
-                """
+        einladung = vorlage.substitute(datum= date, sections= section)
 
-        filename = self.path[:-4]
-        path = filename + '.tex'
         with open((self.path[:-4] + '.tex'), 'w') as f:
             f.write(einladung)
 
+    def remind(self):
+        for line in self.protocol[:5]:
+            if "protokoll" in line.lower():
+                user = re.findall(r"\$\{(.*?)\}", line)[0]
+                if len(extract_mails(ldap_search([user], [])))>0:
+                    mail = extract_mails(ldap_search([user], []))[0]
+
+                    server = smtplib.SMTP("mail.mathphys.stura.uni-heidelberg.de", 25)
+                    msg = MIMEMultipart()
+                    msg["From"] = self.args.from_address
+                    msg["To"] = mail
+                    msg["Subject"] = "Du bist dran: Protokoll offizialisieren"
+
+                    body = "Vielen Dank, dass du in der letzten Sitzung das Protokoll geschrieben hast. Ganz fertig ist deine Aufgabe aber noch nicht: Du musst aus dem inoffiziellen Protokoll noch eine offizielle Version schreiben. Dazu wurde bereits eine Vorlage erstellt, die du nur noch mit Inhalt füllen musst. Du findest sie im Sumpf unter: {}\n\nViele Grüße, Dein SPAM-Skript.".format(self.path[:-4] + '.tex')
+
+                    msg.attach(MIMEText(body, "plain"))
+                    text = msg.as_string()
+                    server.sendmail(self.args.from_address, mail, text)
+                    server.quit()
+                    print("Eine Erinnerung an den Protokollanten wurde erfolgreich verschickt!")
+                    return
+
+        print("Eine Erinnerung an den Protokollanten konnte nicht verschickt werden. Denke selber dran, das offizielle Protokoll zu erstellen. Eine Vorlage liegt bereits in diesem Ordner.")
+        return
 
 class TOP(Protocol):
     """
@@ -361,11 +401,18 @@ class TOP(Protocol):
             # else wait for adjustet input or interruption
             result = extract_mails(ldap_search([user], self.unknown)) # search remaining users in LDAP
             if result:
-                self.mails.append(result)
+                self.mails.append(result[0])
             elif user.lower() in LIST_USERS:
                 self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
             elif re.match("[^@]+@[^@]+\.[^@]+", user):
-                print(user)
+                if ' ' in user:
+                    name = " ".join([u for u in user.split() if not '@' in u])
+                    mail = [u for u in user.split() if '@' in u][0]
+                    self.users[k] = name
+                    self.mails.append(mail)
+                else: # user is valid mail address
+                    self.users[k] = user.split('@')[0]
+                    self.mails.append(user)
             else:
                 new_name = user
                 while not result and new_name !='q': # loop until correct user or stopping condition entered
@@ -380,39 +427,33 @@ class TOP(Protocol):
                     self.unknown.append(user)
                     self.mails.append([])
 
-            print("User: {} - Mail: {}\n".format(user, self.mails[k]))
+#            print("User: {} - Mail: {}\n".format(user, self.mails[k]))
         print("\n")
 
         return self.unknown
 
     def send_mail(self, server) -> int:
 
-        print(self.title)
-        print(self.users)
-        print(self.mails)
         for user, mail in zip(self.users, self.mails):
             from_addr = self.args.from_address
 
             msg = MIMEMultipart()
             msg["From"] = from_addr
             msg["To"] = mail
-            msg["Subject"] = self.args.mail_subject_prefix + ": " + self.title.title_text
+            msg["Subject"] = self.args.mail_subject_prefix + " - " + self.title.title_text
 
             if user.lower() in LIST_USERS:
-                body = [greeting for [account, greeting] in LIST_USERS if account == user.lower()][0] + ",\n\n"
+                body = LIST_USERS[user.lower()] + ",\n\n"
             else:
                 body = "Hallo {},\n\n".format(user)
             body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(self.__str__())
-            # \n\nSollte der Text abgeschnitten sein, schaue bitte im Sitzungsprotokoll nach (Zeile #{tops[i]} – MathPhys Login notwendig).\n#{url}/#{file}\" | mail -a \"Reply-To: #{$replyto}\" -a \"Content-Type: text/plain; charset=UTF-8\" -s \"#{$subject}: #{title} (#{date})\" '#{mail}';", false) unless $debug
 
             msg.attach(MIMEText(body, "plain"))
             text = msg.as_string()
-#            server.sendmail(from_addr, mail, text)
+            server.sendmail(from_addr, mail, text)
             self.send +=1
-            self.users.remove(user)
-            self.mails.remove(mail)
-            print(user)
             print('Mail an "{}" zu {} gesendet.'.format(user, self.title.title_text))
+
         return self.send
 
 
@@ -512,10 +553,10 @@ def main():
         dest="disable_svn",
     )
     parser.add_argument(
-        "--disable-official",
+        "--disable-tex",
         help="Unterdruckt die Erstellung eines .tex Templates als offizielles Protokoll. So wird auch eine bereits existierende Datei nicht uberschrieben",
         action="store_true",
-        dest="disable_official",
+        dest="disable_tex",
     )
 
     parser.add_argument(
@@ -552,6 +593,7 @@ def main():
         version=__version__,
     )
 
+
     if len(sys.argv)==1: # print help message if no arguments were given
         parser.print_help(sys.stderr)
         sys.exit(1)
@@ -559,16 +601,21 @@ def main():
     args = parser.parse_args()
 
     protocol = Protocol(args)
+    if protocol.check_dude():
+        print("Das Protokoll wurde bereits gedudet.")
+        if input("Bist du sicher, dass du Leuten nochmal nervige SPAM Mails schicken willst? [j/N]") != "j":
+            return
     if not args.disable_path_check:
         protocol.check_path()
     protocol.get_tops()
     protocol.get_users()
     protocol.rename_title()
-    if not args.disable_official:
+    if not args.disable_tex:
         protocol.official()
     else:
-        print("Keine .tex Datei als offizielles Protokoll erstellt.")
+        print("Keine .tex Datei als offizielle Protokollvorlage erstellt.")
     if not args.disable_mail:
+        # protocol.remind()
         protocol.send_mails()
     else:
         print("Mailversand nicht aktiviert!")
