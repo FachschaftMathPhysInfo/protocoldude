@@ -357,26 +357,28 @@ class TOP(Protocol):
         print(self.title)
 
         for k, user in enumerate(self.users):
-            # if user in List_user append valid mail to "mails" else add user to not found
+            # if user in LDAP oder LIST_USERS append valid mail to "mails"
+            # else wait for adjustet input or interruption
             result = extract_mails(ldap_search([user], self.unknown)) # search remaining users in LDAP
             if result:
                 self.mails.append(result)
+            elif user.lower() in LIST_USERS:
+                self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
+            elif re.match("[^@]+@[^@]+\.[^@]+", user):
+                print(user)
             else:
-                if user.lower() in LIST_USERS:
-                    self.mails.append(user + "@mathphys.stura.uni-heidelberg.de")
+                new_name = user
+                while not result and new_name !='q': # loop until correct user or stopping condition entered
+                    print('\n"{}" ist kein Nutzer und keine bekannte Mailing-Liste.'.format(new_name))
+                    new_name = input("Bitte gib den korrektren Mailempfanger ein oder uberspringe mit 'q': ")
+                    result = extract_mails(ldap_search([new_name], self.unknown)) # search remaining users in LDAP
+                    if not result and user.lower() in LIST_USERS:
+                        result = new_name + "@mathphys.stura.uni-heidelberg.de"
+                if result:
+                    self.mails.append(result)
                 else:
-                    new_name = user
-                    while not result and new_name !='q': # loop until correct user or stopping condition entered
-                        print('\n"{}" ist kein Nutzer und keine bekannte Mailing-Liste.'.format(new_name))
-                        new_name = input("Bitte gib den korrektren Mailempfanger ein oder uberspringe mit 'q': ")
-                        result = extract_mails(ldap_search([new_name], self.unknown)) # search remaining users in LDAP
-                        if not result and user.lower() in LIST_USERS:
-                            result = new_name + "@mathphys.stura.uni-heidelberg.de"
-                    if result:
-                        self.mails.append(result)
-                    else:
-                        self.unknown.append(user)
-                        self.mails.append([])
+                    self.unknown.append(user)
+                    self.mails.append([])
 
             print("User: {} - Mail: {}\n".format(user, self.mails[k]))
         print("\n")
