@@ -5,6 +5,8 @@
 # possible input mail adresses:
 #     ${internal}          => internal@mathphys.stura.uni-heidelberg.de
 #     ${external@some.com} => external@some.com
+#     ${external@some.com Some Name}  => external@some.com
+#     ${Some Name external@some.com}  => external@some.com
 
 from string import Template
 import argparse
@@ -143,6 +145,7 @@ class Protocol(object):
             self.protocol = self.download_protocol(self.path)
             splitted = self.path.split("/")
             self.path = splitted[len(splitted)-1]+'.txt'
+            
         else:
             with open(self.path, "r") as file:
                 self.protocol = file.read().splitlines()
@@ -374,7 +377,7 @@ class TOP(Protocol):
         self.send = 0
 
     def __str__(self):
-        return "\n".join(self.protocol[self.start:self.end])
+        return "\n".join(self.protocol[self.start+3:self.end])
 
     def rename(self):
         self.title.rename(self.number)
@@ -446,7 +449,7 @@ class TOP(Protocol):
                 body = LIST_USERS[user.lower()] + ",\n\n"
             else:
                 body = "Hallo {},\n\n".format(user)
-            body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(self.__str__())
+            body += "Du sollst über irgendwas informiert werden. Im Sitzungsprotokoll steht dazu folgendes:\n\n{}\n\n{}\n\n\nViele Grüße, Dein SPAM-Skript.".format(self.title.title_text,self.__str__())
 
             msg.attach(MIMEText(body, "plain"))
             text = msg.as_string()
