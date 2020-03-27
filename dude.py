@@ -372,7 +372,6 @@ class TOP(Protocol):
         self.protocol = protocol
         self.title = TOP_Title(start, start+3, self.protocol[start+1])
         self.send = 0
-        print(self.__str__())
 
     def __str__(self):
         return "\n".join(self.protocol[self.start:self.end])
