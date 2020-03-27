@@ -1,25 +1,17 @@
-:Protocoldude: Mails versandt @ 23:48 06.02.2020
-
-
-:Protocoldude: Mails versandt @ 23:45 06.02.2020
-
-
-:Protocoldude: Mails versandt @ 15:50 10.11.2019
-
 Simo: Johannes
-Protokoll: Thorsten ${tbus}
+Protokoll: ChrisB ${chrisb}
 Beginn: 18:15 Uhr
 Ende: 19:09 Uhr
 
 ================
 TOP 1: Begrüßung
 ================
-Beschlussfähig: Info, Physik
+Die anwesenden Fachschaftler werden begrüßt.
 
 ===============================
 TOP 2: Protokoll letzte Sitzung
 ===============================
-${vertagt}
+Es gibt kein Protokoll. Darum wird der Beschluss ${vertagt}
 
 ================
 TOP 3: FS-Dienst
@@ -29,36 +21,32 @@ Die Liste wird herum gegeben.
 =================
 TOP 4: Funkgeräte
 =================
-Im PI-Raum sind Funkgeräte aufgetaucht. Sie wurden für die MathPhysTheo angeschafft. Scheinen nicht gut zu funktionieren. Funkgeräte werden gegen Spende an das Schwein abgegeben.
+Cool. Brauchen wir sowas?
 
 ================
-TOP 5: Nightline
+TOP 5: Programmieren
 ================
-Es wurde über die Email der Nightline geredet. 
+Auch außerhalb der Fachschaft sollen Leute programmieren lernen. Wer kann gefragt werden?
 
 ===============
-TOP 6: Omniphon
+TOP 6: Server
 ===============
-Omniphon hat neues Equipment angeschafft. Fachschaft sollte über die MathPhysTheo die Kosten übernehmen. Da dieses Semester keine MathPhysTheo stattfindet, will Omniphon das Geld gleich haben. Es wird über eine formale Begründung diskutiert. Es wird vorgeschlagen nur eine Rate in diesem Semester zu Zahlen, da nächstes Jahr wieder eine MathPhysTheo stattfinden soll. 
-
-${marvin} und ${smayer} kümmern sich darum. Der Top wird ${vertagt}. 
+Unser Server ist super. Besser geht aber immer. 
 
 ============================
 TOP 7: Fachschaftswochenende
 ============================
-Janne stellt das FSWE vor. Das nächste FSWE ist vom 29. November bis zum 01. Dezember.
+Ein FSWE soll in den kommenden Wochen stattfinden. 
 
 ======================================
 TOP 8: Aktuelles aus Studium und Lehre
 ======================================
- - Physik Lehramt Anfängerzahl deutlich gesunken.
- - Mathe will eventuell Zulassungsbeschränkung einführung.
+ - Im Moment findet der Vorkurs statt
+ - Alle, die Zeit haben, können mithelfen
 
 ====================
 TOP 9: Verschiedenes
 ====================
-- Wechslerabend ist heute nach der Sitzung. 
-- Kummerkasten: Nachfolger gesucht; stärker bewerben
-- Mittwochs 16 – 18 Uhr findet der Website-AK statt. Jeder kann mithelfen. ${fachschaft}
-- Ersteis stellen Fragen.
-In der Mensa gibt es aus hygienischen Gründen keine Mikrowellen. Es wird darüber diskutiert mit anderen Fachschaften zusammen eine Stelle zu finanzieren, die auf die Hygiene von Mikrowellen achten soll.
+- Auch für Masterstudierende gibt es eine Semesteranfangsaktion. Herzlich Willkommen in Heidelberg!
+- Die Fachschaft kann am Anfang der Vorlesungen wieder Skripte verteilen. 
+- Unser Fachschaftsraum soll schöner werden
