@@ -145,10 +145,15 @@ class Protocol(object):
             self.protocol = self.download_protocol(self.path)
             splitted = self.path.split("/")
             self.path = splitted[len(splitted)-1]+'.txt'
-            
         else:
-            with open(self.path, "r") as file:
-                self.protocol = file.read().splitlines()
+            if os.path.isfile(self.path):
+                with open(self.path, "r") as file:
+                    self.protocol = file.read().splitlines()
+            else:
+                print("Es existiert kein Protokoll an dieser Stelle.\nÖffne einen Editor, um ein Protokoll unter diesem Pfad zu erstellen.")
+                self.protocol = [""]
+                # open editor
+                # create file
         self.tops = []
         self.mails_sent = False
         self.unknown = []
@@ -172,9 +177,6 @@ class Protocol(object):
         # return True
 
         filename_match = re.match("^20\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01]).txt{1}$", self.path)
-
-        if not os.path.isfile(self.path):
-            raise FileNotFoundError("Der Dateipfad führt nicht zu einem Sitzungsprotokoll!")
 
         while not filename_match:
             print("Den Dateipfad {} solltest du in das Datum der Sitzung ändern! Das sollte dann so aussehen: yyyy-mm-dd.txt".format(self.path))
