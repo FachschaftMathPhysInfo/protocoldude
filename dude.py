@@ -55,6 +55,7 @@ LIST_USERS = {
     "fakratphysik": "Liebes Mitglied des Physik-Fakrats",
     "akfest": "Liebes Mitglied der AK-Fest Liste",
     "vertagt": "Liebe SiMo",
+    "simo": "Liebe SiMo",
     "schluesselinhaber": "Liebe/r Bewohner/in des Fachschaftsraums",
     "finanzen": "Sehr geehrte Menschen mit Ahnung der vielen Goldbarren",
     "vorkurs": "Lieber AK Vorkurs",
