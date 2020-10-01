@@ -303,7 +303,7 @@ class Protocol(object):
                     "svn",
                     "commit",
                     "-m",
-                    '"Protokoll der gemeinsamen Sitzung hinzugefügt"',
+                    '"Protokoll der {} hinzugefügt".format(self.args.mail_subject_prefix)',
                 ],
                 check=True,
             )
