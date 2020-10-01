@@ -24,7 +24,7 @@ from email.mime.text import MIMEText
 
 import ldap
 
-__version__ = "v4.0.3"
+__version__ = "v4.0.5"
 
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
@@ -36,6 +36,7 @@ LIST_USERS = {
     "fachschaft": "Liebe Fachschaft",
     "flachschaft": "Liebe Fachschaft",
     "bernd": "Liebe Fachschaft",
+    "fsr": "Liebe Fachschaftsräte",
     "fsinformatik": "Liebe Fachschaft",
     "fsphysik": "Liebe Fachschaft",
     "fsmathematik": "Liebe Fachschaft",
@@ -55,6 +56,7 @@ LIST_USERS = {
     "fakratphysik": "Liebes Mitglied des Physik-Fakrats",
     "akfest": "Liebes Mitglied der AK-Fest Liste",
     "vertagt": "Liebe SiMo",
+    "simo": "Liebe SiMo",
     "schluesselinhaber": "Liebe/r Bewohner/in des Fachschaftsraums",
     "finanzen": "Sehr geehrte Menschen mit Ahnung der vielen Goldbarren",
     "vorkurs": "Lieber AK Vorkurs",
@@ -90,7 +92,7 @@ vorlage = Template(r"""% !TEX program    = pdflatex
 
 \begin{document}
 \date{\vspace{-2em} $datum \vspace{-1em}} % Datum ersetzen
-\title{\vspace{-2em}Protokoll der Fachschaftssitzung MathPhysInfo}
+\title{\vspace{-2em}Vorläufiges Protokoll der Fachschaftssitzung MathPhysInfo}
 \maketitle
 
 \begin{tabbing}
@@ -122,6 +124,7 @@ vorlage = Template(r"""% !TEX program    = pdflatex
 \section{Sitzungsmoderation für die nächste Sitzung}
     Die Sitzungsmoderation für die Fachschaftssitzung MathPhysInfo der nächsten Woche wird von xxx übernommen. % SiMo nachste Woche einfugen
 
+%%%% Achte ab hier darauf, dass Dopplungen der Standard TOPs gelöscht werden. %%%%
 $sections
 
 \emph{Die Sitzungmoderation schließt die Sitzung um xx:xx Uhr.}
@@ -300,7 +303,7 @@ class Protocol(object):
                     "svn",
                     "commit",
                     "-m",
-                    '"Protokoll der gemeinsamen Sitzung hinzugefügt"',
+                    '"Protokoll der {} hinzugefügt".format(self.args.mail_subject_prefix)',
                 ],
                 check=True,
             )
@@ -321,7 +324,7 @@ class Protocol(object):
         date = datetime.datetime.strptime(self.path.split(".")[0], "%Y-%m-%d").strftime("%d. %B %Y")
 
         section = ""
-        for top in self.tops[5:]:
+        for top in self.tops[:]:
             top.title.title_text = top.title.title_text.replace("&", "\\&")
             section += "\\section{" + top.title.title_text[top.title.title_text.find(":")+2:] + "}\n\n"
 
