@@ -47,3 +47,17 @@ Usernames are recogized when annotated like this and are then sent the full agen
 ```
 [...] ${kai-uwe} [...]
 ```
+# Configuration
+
+If there is a config.ini file in the folder where the Protocoldude3 is executed, it will be loaded. The config.ini file determines the default settings. It is also possible to specify only a part of the default settings in a config.ini file. Command line arguments overwrite the default settings.
+
+Example of a config.ini file:
+```ini
+[default]
+disable_mail=False
+disable_path_check=False
+disable_svn=False
+disable_tex=False
+from_address=simo@mathphys.stura.uni-heidelberg.de
+mail_subject_prefix=Gemeinsame Sitzung
+```
