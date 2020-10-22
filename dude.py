@@ -8,11 +8,12 @@
 
 from string import Template
 import argparse
+import configparser
 import datetime
 import subprocess
 import re
 import smtplib
-import getpass
+#import getpass
 import tempfile
 import locale
 import urllib.request
@@ -561,7 +562,6 @@ def main():
         action="store_true",
         dest="disable_tex",
     )
-
     parser.add_argument(
         "--disable-path-checking",
         help="Verhindert eine Überprüfung des angegebenen Dateinamens.",
@@ -572,6 +572,30 @@ def main():
         "--disable-mail",
         help="Unterdrückt das Senden von Mails.",
         action="store_true",
+        dest="disable_mail",
+    )
+    parser.add_argument(
+        "--enable-svn",
+        help="Schaltet die SVN Interaktion ein.",
+        action="store_false",
+        dest="disable_svn",
+    )
+    parser.add_argument(
+        "--enable-tex",
+        help="Erstelle eines .tex Templates als offizielles Protokoll.",
+        action="store_false",
+        dest="disable_tex",
+    )
+    parser.add_argument(
+        "--enable-path-checking",
+        help="Überprüfung des angegebenen Dateinamens",
+        action="store_false",
+        dest="disable_path_check",
+    )
+    parser.add_argument(
+        "--enable-mail",
+        help="Aktiviere das Senden von Mails.",
+        action="store_false",
         dest="disable_mail",
     )
     parser.add_argument(
@@ -601,6 +625,17 @@ def main():
         parser.print_help(sys.stderr)
         sys.exit(1)
 
+    if os.path.isfile('config.ini'):
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        defaults = dict(config['default'])
+        for key in defaults:
+            if defaults[key]=='True':
+                defaults.update({key: True})
+            elif defaults[key]=='False':
+                defaults.update({key: False})
+        parser.set_defaults(**defaults)
+
     args = parser.parse_args()
 
     protocol = Protocol(args)
@@ -629,4 +664,4 @@ def main():
         print("Nichts ins SVN commited!")
 
 if __name__ == "__main__":
-        main()
+    main()
