@@ -13,12 +13,13 @@ import datetime
 import subprocess
 import re
 import smtplib
-#import getpass
+import getpass
 import tempfile
 import locale
 import urllib.request
 import sys
 import os
+import socket
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -242,17 +243,23 @@ class Protocol(object):
             top.get_user()
             self.unknown = top.get_mails()
 
-    def send_mails(self, username="", tries=0):
+    def send_mails(self):
         try:
-            server = smtplib.SMTP("mail.mathphys.stura.uni-heidelberg.de", 25)
-            # server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
-            # prompt = "Passwort für deinen Uni Account: "
-            # if not username:
-            #     username = input("Uni ID für den Mailversand: ")
-            # prompt = "Passwort für {}: ".format(username)
-            # server.login(
-            #     username, getpass.getpass(prompt=prompt)
-            # )
+            try:
+                server = smtplib.SMTP("mail.mathphys.stura.uni-heidelberg.de", 25, timeout=3)
+            except socket.timeout as _:
+                success = False
+                while not success:
+                    try:
+                        server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
+                        server.starttls()
+                        username = input("Uni ID für den Mailversand: ")
+                        prompt = "Passwort für {}: ".format(username)
+                        server.login(username, getpass.getpass(prompt=prompt))
+                        success = True
+                    except smtplib.SMTPAuthenticationError:
+                        print("\nDu hast die falschen Anmeldedaten eingegeben!")
+                        print("Bitte versuche es noch einmal:")
 
             mailcount = 0
             print(len(self.tops))
@@ -268,16 +275,9 @@ class Protocol(object):
             #     print("An folgende Nutzer konnte aus unerklärlichen Gründen keine Mail versandt werden:")
             #     for user in self.unknown:
             #         print("    - {}".format(user))
-
-        # except smtplib.SMTPAuthenticationError:
-        #     print("Du hast die falschen Anmeldedaten eingegeben!")
-        #     print("Bitte versuche es noch einmal:")
-        #     self.send_mails(username=username, tries=tries+1)
-        except Exception as e:
-            print(e)
-            print(
-                "\nMails konnten nicht verschickt werden. Hast du die richtigen Anmeldedaten eingegeben?"
-            )
+        except Exception as exception:
+            print(exception)
+            print("\nMails konnten nicht verschickt werden.")
 
     def write_success(self):
         if self.mails_sent:
