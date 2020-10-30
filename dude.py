@@ -15,7 +15,7 @@ import re
 import smtplib
 import getpass
 import tempfile
-import locale
+#import locale
 import urllib.request
 import sys
 import os
@@ -31,7 +31,7 @@ __version__ = "v4.0.5"
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
 
-locale.setlocale(locale.LC_TIME, 'de_DE')
+#locale.setlocale(locale.LC_TIME, 'de_DE')
 
 # define common mail lists and aliases
 LIST_USERS = {
@@ -244,6 +244,8 @@ class Protocol(object):
             self.unknown = top.get_mails()
 
     def send_mails(self):
+        if sum([len(top.mails) for top in self.tops])==0:
+            return
         try:
             try:
                 server = smtplib.SMTP("mail.mathphys.stura.uni-heidelberg.de", 25, timeout=3)
@@ -298,13 +300,14 @@ class Protocol(object):
         try:
             subprocess.run(["svn", "up"], check=True)
             subprocess.run(["svn", "add", "{}".format(self.path)], check=True)
-            subprocess.run(["svn", "add", "{}".format(self.path[:-3] + "tex")], check=True)
+            if not self.args.disable_tex:
+                subprocess.run(["svn", "add", "{}".format(self.path[:-3] + "tex")], check=True)
             subprocess.run(
                 [
                     "svn",
                     "commit",
                     "-m",
-                    '"Protokoll der {} hinzugefügt".format(self.args.mail_subject_prefix)',
+                    "Protokoll der {} hinzugefügt".format(self.args.mail_subject_prefix),
                 ],
                 check=True,
             )
