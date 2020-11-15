@@ -8,16 +8,18 @@
 
 from string import Template
 import argparse
+import configparser
 import datetime
 import subprocess
 import re
 import smtplib
 import getpass
 import tempfile
-import locale
+#import locale
 import urllib.request
 import sys
 import os
+import socket
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -29,7 +31,7 @@ __version__ = "v4.0.5"
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
 
-locale.setlocale(locale.LC_TIME, 'de_DE')
+#locale.setlocale(locale.LC_TIME, 'de_DE')
 
 # define common mail lists and aliases
 LIST_USERS = {
@@ -241,17 +243,25 @@ class Protocol(object):
             top.get_user()
             self.unknown = top.get_mails()
 
-    def send_mails(self, username="", tries=0):
+    def send_mails(self):
+        if sum([len(top.mails) for top in self.tops])==0:
+            return
         try:
-            server = smtplib.SMTP("mail.mathphys.stura.uni-heidelberg.de", 25)
-            # server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
-            # prompt = "Passwort für deinen Uni Account: "
-            # if not username:
-            #     username = input("Uni ID für den Mailversand: ")
-            # prompt = "Passwort für {}: ".format(username)
-            # server.login(
-            #     username, getpass.getpass(prompt=prompt)
-            # )
+            try:
+                server = smtplib.SMTP("mail.mathphys.stura.uni-heidelberg.de", 25, timeout=3)
+            except socket.timeout as _:
+                success = False
+                while not success:
+                    try:
+                        server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
+                        server.starttls()
+                        username = input("Uni ID für den Mailversand: ")
+                        prompt = "Passwort für {}: ".format(username)
+                        server.login(username, getpass.getpass(prompt=prompt))
+                        success = True
+                    except smtplib.SMTPAuthenticationError:
+                        print("\nDu hast die falschen Anmeldedaten eingegeben!")
+                        print("Bitte versuche es noch einmal:")
 
             mailcount = 0
             print(len(self.tops))
@@ -267,16 +277,9 @@ class Protocol(object):
             #     print("An folgende Nutzer konnte aus unerklärlichen Gründen keine Mail versandt werden:")
             #     for user in self.unknown:
             #         print("    - {}".format(user))
-
-        # except smtplib.SMTPAuthenticationError:
-        #     print("Du hast die falschen Anmeldedaten eingegeben!")
-        #     print("Bitte versuche es noch einmal:")
-        #     self.send_mails(username=username, tries=tries+1)
-        except Exception as e:
-            print(e)
-            print(
-                "\nMails konnten nicht verschickt werden. Hast du die richtigen Anmeldedaten eingegeben?"
-            )
+        except Exception as exception:
+            print(exception)
+            print("\nMails konnten nicht verschickt werden.")
 
     def write_success(self):
         if self.mails_sent:
@@ -297,13 +300,14 @@ class Protocol(object):
         try:
             subprocess.run(["svn", "up"], check=True)
             subprocess.run(["svn", "add", "{}".format(self.path)], check=True)
-            subprocess.run(["svn", "add", "{}".format(self.path[:-3] + "tex")], check=True)
+            if not self.args.disable_tex:
+                subprocess.run(["svn", "add", "{}".format(self.path[:-3] + "tex")], check=True)
             subprocess.run(
                 [
                     "svn",
                     "commit",
                     "-m",
-                    '"Protokoll der {} hinzugefügt".format(self.args.mail_subject_prefix)',
+                    "Protokoll der {} hinzugefügt".format(self.args.mail_subject_prefix),
                 ],
                 check=True,
             )
@@ -561,7 +565,6 @@ def main():
         action="store_true",
         dest="disable_tex",
     )
-
     parser.add_argument(
         "--disable-path-checking",
         help="Verhindert eine Überprüfung des angegebenen Dateinamens.",
@@ -572,6 +575,30 @@ def main():
         "--disable-mail",
         help="Unterdrückt das Senden von Mails.",
         action="store_true",
+        dest="disable_mail",
+    )
+    parser.add_argument(
+        "--enable-svn",
+        help="Schaltet die SVN Interaktion ein.",
+        action="store_false",
+        dest="disable_svn",
+    )
+    parser.add_argument(
+        "--enable-tex",
+        help="Erstelle eines .tex Templates als offizielles Protokoll.",
+        action="store_false",
+        dest="disable_tex",
+    )
+    parser.add_argument(
+        "--enable-path-checking",
+        help="Überprüfung des angegebenen Dateinamens",
+        action="store_false",
+        dest="disable_path_check",
+    )
+    parser.add_argument(
+        "--enable-mail",
+        help="Aktiviere das Senden von Mails.",
+        action="store_false",
         dest="disable_mail",
     )
     parser.add_argument(
@@ -601,6 +628,17 @@ def main():
         parser.print_help(sys.stderr)
         sys.exit(1)
 
+    if os.path.isfile('config.ini'):
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        defaults = dict(config['default'])
+        for key in defaults:
+            if defaults[key]=='True':
+                defaults.update({key: True})
+            elif defaults[key]=='False':
+                defaults.update({key: False})
+        parser.set_defaults(**defaults)
+
     args = parser.parse_args()
 
     protocol = Protocol(args)
@@ -629,4 +667,4 @@ def main():
         print("Nichts ins SVN commited!")
 
 if __name__ == "__main__":
-        main()
+    main()
