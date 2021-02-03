@@ -26,7 +26,7 @@ from email.mime.text import MIMEText
 
 import ldap
 
-__version__ = "v4.1.0"
+__version__ = "v4.1.1"
 
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
@@ -35,9 +35,7 @@ MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
 
 # define common mail lists and aliases
 LIST_USERS = {
-    "fachschaft": "Liebe Fachschaft",
-    "flachschaft": "Liebe Fachschaft",
-    "bernd": "Liebe Fachschaft",
+    "intern": "Liebe Fachschaft",
     "fsr": "Liebe Fachschaftsräte",
     "fsinformatik": "Liebe Fachschaft",
     "fsphysik": "Liebe Fachschaft",
