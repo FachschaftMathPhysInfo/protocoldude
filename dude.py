@@ -15,7 +15,7 @@ import re
 import smtplib
 import getpass
 import tempfile
-#import locale
+import locale
 import urllib.request
 import sys
 import os
@@ -26,12 +26,12 @@ from email.mime.text import MIMEText
 
 import ldap
 
-__version__ = "v4.1.1"
+__version__ = "v4.1.2"
 
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
 
-#locale.setlocale(locale.LC_TIME, 'de_DE')
+locale.setlocale(locale.LC_TIME, 'de_DE')
 
 # define common mail lists and aliases
 LIST_USERS = {
