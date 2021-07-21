@@ -1,12 +1,33 @@
 name: A workflow to deploy changes in protocoldude.py into "Sumpf"
-on: push
+on: 
+  push:
+    branches: 
+      - master
 
 jobs:
   build:
-    name: Hello world action
+#     name: Hello world action
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v1
+#       - uses: ./deploy
+#         with:
+#           MY_NAME: "Chris"
+
     runs-on: ubuntu-latest
+    name: Build and Deploy
+
     steps:
-      - uses: actions/checkout@v1
-      - uses: ./deploy
+      - uses: actions/checkout@master
+
+      - name: Publish
+        uses: nogsantos/scp-deploy@master
         with:
-          MY_NAME: "Chris"
+          src: ./dude.py
+          host: ${{ secrets.SSH_HOST }}
+          remote: ${{ secrets.SSH_DIR }}
+          port: ${{ secrets.SSH_PORT }}
+          user: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+     - name: SVN magic
+       uses: ./deploy
