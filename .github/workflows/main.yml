@@ -1,0 +1,2 @@
+name: A workflow to deploy changes in protocoldude.py into "Sumpf"
+on: push
