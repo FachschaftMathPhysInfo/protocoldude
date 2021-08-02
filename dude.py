@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # possible input mail adresses:
@@ -117,7 +116,7 @@ vorlage = Template(r"""% !TEX program    = pdflatex
 \section{Beschluss des Protokolls der letzten Sitzung}
 
 \begin{antrag}
-	Annahme des Protokolls vom xx. Monat 2019. \\% Datum einfügen
+    Annahme des Protokolls vom xx. Monat 2019. \\% Datum einfügen
 \end{antrag}
 \konsensE{}
 
