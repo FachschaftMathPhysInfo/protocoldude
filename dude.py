@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # possible input mail adresses:
@@ -10,6 +9,7 @@
 
 from string import Template
 import argparse
+import configparser
 import datetime
 import subprocess
 import re
@@ -20,13 +20,14 @@ import locale
 import urllib.request
 import sys
 import os
+import socket
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import ldap
 
-__version__ = "v4.0.3"
+__version__ = "v4.1.2"
 
 MATHPHYS_LDAP_ADDRESS = "ldap1.mathphys.stura.uni-heidelberg.de"
 MATHPHYS_LDAP_BASE_DN = "ou=People,dc=mathphys,dc=stura,dc=uni-heidelberg,dc=de"
@@ -35,13 +36,15 @@ locale.setlocale(locale.LC_TIME, 'de_DE')
 
 # define common mail lists and aliases
 LIST_USERS = {
-    "fachschaft": "Liebe Fachschaft",
-    "flachschaft": "Liebe Fachschaft",
-    "bernd": "Liebe Fachschaft",
+    "intern": "Liebe Fachschaft",
+    "fsr": "Liebe Fachschaftsräte",
     "fsinformatik": "Liebe Fachschaft",
     "fsphysik": "Liebe Fachschaft",
     "fsmathematik": "Liebe Fachschaft",
     "fsmathinf": "Liebe Fachschaft",
+    "fsrphysik": "Liebe Fachschaftsräte",
+    "fsrmathematik": "Liebe Fachschaftsräte",
+    "fsrmathinf": "Liebe Fachschaftsräte",
     "infostudkom": "Liebes Mitglied der Studienkommission Informatik",
     "tistudkom": "Liebes Mitglied der Studkom TI",
     "mathstudkom": "Liebe MathStudKomLerInnen",
@@ -55,8 +58,12 @@ LIST_USERS = {
     "physfakrat": "Liebes Mitglied des Physik-Fakrats",
     "fakratphys": "Liebes Mitglied des Physik-Fakrats",
     "fakratphysik": "Liebes Mitglied des Physik-Fakrats",
+    "ruth": "Liebe Roots mit Ahnung von Technik",
+    "root": "Liebe Roots mit Ahnung von Technik",
     "akfest": "Liebes Mitglied der AK-Fest Liste",
     "vertagt": "Liebe SiMo",
+    "simo": "Liebe SiMo",
+    "social": "Liebes Social-Team",
     "schluesselinhaber": "Liebe/r Bewohner/in des Fachschaftsraums",
     "finanzen": "Sehr geehrte Menschen mit Ahnung der vielen Goldbarren",
     "vorkurs": "Lieber AK Vorkurs",
@@ -92,7 +99,7 @@ vorlage = Template(r"""% !TEX program    = pdflatex
 
 \begin{document}
 \date{\vspace{-2em} $datum \vspace{-1em}} % Datum ersetzen
-\title{\vspace{-2em}Protokoll der Fachschaftssitzung MathPhysInfo}
+\title{\vspace{-2em}Vorläufiges Protokoll der Fachschaftssitzung MathPhysInfo}
 \maketitle
 
 \begin{tabbing}
@@ -111,7 +118,7 @@ vorlage = Template(r"""% !TEX program    = pdflatex
 \section{Beschluss des Protokolls der letzten Sitzung}
 
 \begin{antrag}
-	Annahme des Protokolls vom xx. Monat 2019. \\% Datum einfügen
+    Annahme des Protokolls vom xx. Monat 2019. \\% Datum einfügen
 \end{antrag}
 \konsensE{}
 
@@ -124,6 +131,7 @@ vorlage = Template(r"""% !TEX program    = pdflatex
 \section{Sitzungsmoderation für die nächste Sitzung}
     Die Sitzungsmoderation für die Fachschaftssitzung MathPhysInfo der nächsten Woche wird von xxx übernommen. % SiMo nachste Woche einfugen
 
+%%%% Achte ab hier darauf, dass Dopplungen der Standard TOPs gelöscht werden. %%%%
 $sections
 
 \emph{Die Sitzungmoderation schließt die Sitzung um xx:xx Uhr.}
@@ -245,17 +253,25 @@ class Protocol(object):
             top.get_user()
             self.unknown = top.get_mails()
 
-    def send_mails(self, username="", tries=0):
+    def send_mails(self):
+        if sum([len(top.mails) for top in self.tops])==0:
+            return
         try:
-            server = smtplib.SMTP("mail.mathphys.stura.uni-heidelberg.de", 25)
-            # server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
-            # prompt = "Passwort für deinen Uni Account: "
-            # if not username:
-            #     username = input("Uni ID für den Mailversand: ")
-            # prompt = "Passwort für {}: ".format(username)
-            # server.login(
-            #     username, getpass.getpass(prompt=prompt)
-            # )
+            try:
+                server = smtplib.SMTP("mail.mathphys.stura.uni-heidelberg.de", 25, timeout=3)
+            except socket.timeout as _:
+                success = False
+                while not success:
+                    try:
+                        server = smtplib.SMTP("mail.urz.uni-heidelberg.de", 587)
+                        server.starttls()
+                        username = input("Uni ID für den Mailversand: ")
+                        prompt = "Passwort für {}: ".format(username)
+                        server.login(username, getpass.getpass(prompt=prompt))
+                        success = True
+                    except smtplib.SMTPAuthenticationError:
+                        print("\nDu hast die falschen Anmeldedaten eingegeben!")
+                        print("Bitte versuche es noch einmal:")
 
             mailcount = 0
             print(len(self.tops))
@@ -271,16 +287,9 @@ class Protocol(object):
             #     print("An folgende Nutzer konnte aus unerklärlichen Gründen keine Mail versandt werden:")
             #     for user in self.unknown:
             #         print("    - {}".format(user))
-
-        # except smtplib.SMTPAuthenticationError:
-        #     print("Du hast die falschen Anmeldedaten eingegeben!")
-        #     print("Bitte versuche es noch einmal:")
-        #     self.send_mails(username=username, tries=tries+1)
-        except Exception as e:
-            print(e)
-            print(
-                "\nMails konnten nicht verschickt werden. Hast du die richtigen Anmeldedaten eingegeben?"
-            )
+        except Exception as exception:
+            print(exception)
+            print("\nMails konnten nicht verschickt werden.")
 
     def write_success(self):
         if self.mails_sent:
@@ -301,13 +310,14 @@ class Protocol(object):
         try:
             subprocess.run(["svn", "up"], check=True)
             subprocess.run(["svn", "add", "{}".format(self.path)], check=True)
-            subprocess.run(["svn", "add", "{}".format(self.path[:-3] + "tex")], check=True)
+            if not self.args.disable_tex:
+                subprocess.run(["svn", "add", "{}".format(self.path[:-3] + "tex")], check=True)
             subprocess.run(
                 [
                     "svn",
                     "commit",
                     "-m",
-                    '"Protokoll der gemeinsamen Sitzung hinzugefügt"',
+                    "Protokoll der {} hinzugefügt".format(self.args.mail_subject_prefix),
                 ],
                 check=True,
             )
@@ -328,7 +338,7 @@ class Protocol(object):
         date = datetime.datetime.strptime(self.path.split(".")[0], "%Y-%m-%d").strftime("%d. %B %Y")
 
         section = ""
-        for top in self.tops[5:]:
+        for top in self.tops[:]:
             top.title.title_text = top.title.title_text.replace("&", "\\&")
             section += "\\section{" + top.title.title_text[top.title.title_text.find(":")+2:] + "}\n\n"
 
@@ -565,7 +575,6 @@ def main():
         action="store_true",
         dest="disable_tex",
     )
-
     parser.add_argument(
         "--disable-path-checking",
         help="Verhindert eine Überprüfung des angegebenen Dateinamens.",
@@ -576,6 +585,30 @@ def main():
         "--disable-mail",
         help="Unterdrückt das Senden von Mails.",
         action="store_true",
+        dest="disable_mail",
+    )
+    parser.add_argument(
+        "--enable-svn",
+        help="Schaltet die SVN Interaktion ein.",
+        action="store_false",
+        dest="disable_svn",
+    )
+    parser.add_argument(
+        "--enable-tex",
+        help="Erstelle eines .tex Templates als offizielles Protokoll.",
+        action="store_false",
+        dest="disable_tex",
+    )
+    parser.add_argument(
+        "--enable-path-checking",
+        help="Überprüfung des angegebenen Dateinamens",
+        action="store_false",
+        dest="disable_path_check",
+    )
+    parser.add_argument(
+        "--enable-mail",
+        help="Aktiviere das Senden von Mails.",
+        action="store_false",
         dest="disable_mail",
     )
     parser.add_argument(
@@ -605,6 +638,17 @@ def main():
         parser.print_help(sys.stderr)
         sys.exit(1)
 
+    if os.path.isfile('config.ini'):
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+        defaults = dict(config['default'])
+        for key in defaults:
+            if defaults[key]=='True':
+                defaults.update({key: True})
+            elif defaults[key]=='False':
+                defaults.update({key: False})
+        parser.set_defaults(**defaults)
+
     args = parser.parse_args()
 
     protocol = Protocol(args)
@@ -633,4 +677,4 @@ def main():
         print("Nichts ins SVN commited!")
 
 if __name__ == "__main__":
-        main()
+    main()
